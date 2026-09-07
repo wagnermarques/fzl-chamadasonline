@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  STAFF
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  role               Role
+  registrationNumber String?  @unique
+  email              String?  @unique
+  name               String
+  pinHash            String
+  createdAt          DateTime @default(now())
+
+  devices  Device[]
+  checkins Checkin[]
+
+  @@index([role])
+}
+
+model Event {
+  id                   String   @id @default(uuid())
+  name                 String
+  date                 DateTime
+  geofenceLat          Float
+  geofenceLng          Float
+  geofenceRadiusMeters Float    @default(150)
+  createdAt            DateTime @default(now())
+
+  periods EventPeriod[]
+}
+
+model EventPeriod {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id])
+  label     String
+  startsAt  DateTime
+  endsAt    DateTime
+
+  codes    CheckinCode[]
+  checkins Checkin[]
+
+  @@index([eventId])
+}
+
+model CheckinCode {
+  id            String      @id @default(uuid())
+  eventPeriodId String
+  eventPeriod   EventPeriod @relation(fields: [eventPeriodId], references: [id])
+  code          String
+  issuedAt      DateTime    @default(now())
+  expiresAt     DateTime
+
+  @@index([eventPeriodId, expiresAt])
+}
+
+model Device {
+  id              String   @id @default(uuid())
+  clientToken     String   @unique
+  studentId       String?
+  student         User?    @relation(fields: [studentId], references: [id])
+  fingerprintHash String?
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @updatedAt
+
+  checkins Checkin[]
+
+  @@index([fingerprintHash])
+}
+
+model Checkin {
+  id             String      @id @default(uuid())
+  studentId      String
+  student        User        @relation(fields: [studentId], references: [id])
+  eventPeriodId  String
+  eventPeriod    EventPeriod @relation(fields: [eventPeriodId], references: [id])
+  deviceId       String
+  device         Device      @relation(fields: [deviceId], references: [id])
+  lat            Float
+  lng            Float
+  distanceMeters Float
+  flagged        Boolean     @default(false)
+  flagReasons    String[]    @default([])
+  reviewed       Boolean     @default(false)
+  reviewDecision String?
+  createdAt      DateTime    @default(now())
+
+  @@unique([studentId, eventPeriodId])
+  @@index([eventPeriodId])
+  @@index([flagged])
+}
