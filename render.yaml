@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: chamadasonline-api
+    runtime: node
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    buildCommand: >-
+      npm install &&
+      npx prisma generate --schema apps/api/prisma/schema.prisma &&
+      npm run build --workspace apps/api &&
+      npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+    startCommand: npm run start --workspace apps/api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # set manually in the Render dashboard (Supabase connection string)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://wagnermarques.github.io
+      # PORT is injected by Render itself; the app already reads process.env.PORT.

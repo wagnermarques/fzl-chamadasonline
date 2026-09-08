@@ -8,4 +8,8 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET ?? "change-me-in-production",
   port: Number(process.env.PORT ?? 3333),
   databaseUrl: required("DATABASE_URL"),
+  allowedOrigins: (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 };

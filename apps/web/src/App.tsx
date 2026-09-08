@@ -1,15 +1,17 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Login } from "./pages/Login";
 import { Home } from "./pages/Home";
+import { EnrollDevice } from "./pages/EnrollDevice";
 import { AdminEvents } from "./pages/admin/Events";
 import { AdminCodeDisplay } from "./pages/admin/CodeDisplay";
 import { AdminCheckins } from "./pages/admin/Checkins";
 import { AdminFlagged } from "./pages/admin/Flagged";
+import { AdminEnroll } from "./pages/admin/Enroll";
 import { RequireAuth } from "./components/RequireAuth";
 
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/admin/login" element={<Login />} />
@@ -22,10 +24,26 @@ export function App() {
           }
         />
         <Route
+          path="/vincular"
+          element={
+            <RequireAuth role="STUDENT">
+              <EnrollDevice />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/admin/events"
           element={
             <RequireAuth role="STAFF">
               <AdminEvents />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/enroll"
+          element={
+            <RequireAuth role="STAFF">
+              <AdminEnroll />
             </RequireAuth>
           }
         />

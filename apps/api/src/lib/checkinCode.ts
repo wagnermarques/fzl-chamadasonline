@@ -1,17 +1,8 @@
-import { randomInt } from "node:crypto";
 import { CODE_ROTATION_SECONDS } from "@chamadas/shared";
 import { prisma } from "./prisma.js";
+import { generateCode } from "./codeGenerator.js";
 
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid projector misreads
 const CODE_LENGTH = 5;
-
-export function generateCode(): string {
-  let code = "";
-  for (let i = 0; i < CODE_LENGTH; i++) {
-    code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
-  }
-  return code;
-}
 
 /**
  * Returns the currently active code for a period, generating a new one if the
@@ -32,7 +23,7 @@ export async function getOrRotateCurrentCode(eventPeriodId: string) {
   return prisma.checkinCode.create({
     data: {
       eventPeriodId,
-      code: generateCode(),
+      code: generateCode(CODE_LENGTH),
       issuedAt: now,
       expiresAt: new Date(now.getTime() + CODE_ROTATION_SECONDS * 1000),
     },

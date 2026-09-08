@@ -1,10 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { checkinSchema } from "@chamadas/shared";
+import { checkinSchema, FLAG_REASONS, type LatLng } from "@chamadas/shared";
 import { prisma } from "../lib/prisma.js";
-import { isWithinGeofence } from "../lib/geofence.js";
+import { isWithinEventGeofence } from "../lib/geofence.js";
 import { isCodeValidForPeriod } from "../lib/checkinCode.js";
-import { upsertDevice, computeDeviceFlags } from "../lib/device.js";
-import { FLAG_REASONS } from "@chamadas/shared";
+import { upsertDevice, computeDeviceFlags, getVerifiedDeviceForStudent } from "../lib/device.js";
 
 export default async function checkinRoutes(app: FastifyInstance) {
   app.post(
@@ -46,15 +45,27 @@ export default async function checkinRoutes(app: FastifyInstance) {
         return reply.send({ status: "ok" });
       }
 
+      // Once a student has a staff-verified device on file (secretaria
+      // enrollment), only that device can check in for them — this is a
+      // hard rejection, not a flag, since identity was already confirmed
+      // in person.
+      const verifiedDevice = await getVerifiedDeviceForStudent(studentId);
+      if (verifiedDevice && verifiedDevice.clientToken !== clientToken) {
+        request.log.warn(
+          { studentId, expectedDeviceId: verifiedDevice.id },
+          "checkin rejected: device does not match student's verified device",
+        );
+        return reply.code(403).send({ error: "device_not_enrolled" });
+      }
+
       const device = await upsertDevice(clientToken, fingerprintHash);
 
-      const { withinRadius, distanceMeters } = isWithinGeofence(
-        lat,
-        lng,
-        period.event.geofenceLat,
-        period.event.geofenceLng,
-        period.event.geofenceRadiusMeters,
-      );
+      const { withinRadius, distanceMeters } = isWithinEventGeofence(lat, lng, {
+        geofenceLat: period.event.geofenceLat,
+        geofenceLng: period.event.geofenceLng,
+        geofenceRadiusMeters: period.event.geofenceRadiusMeters,
+        geofencePolygon: period.event.geofencePolygon as LatLng[] | null,
+      });
 
       const deviceFlags = await computeDeviceFlags({
         deviceId: device.id,

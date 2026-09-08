@@ -21,8 +21,11 @@ model User {
   pinHash            String
   createdAt          DateTime @default(now())
 
-  devices  Device[]
-  checkins Checkin[]
+  devices                Device[]
+  checkins               Checkin[]
+  enrollmentCodesOwned   DeviceEnrollmentCode[] @relation("EnrollmentCodeStudent")
+  enrollmentCodesIssued  DeviceEnrollmentCode[] @relation("EnrollmentCodeStaff")
+  devicesVerified        Device[]               @relation("DeviceVerifiedByStaff")
 
   @@index([role])
 }
@@ -34,6 +37,10 @@ model Event {
   geofenceLat          Float
   geofenceLng          Float
   geofenceRadiusMeters Float    @default(150)
+  // Optional precise boundary of the school grounds: an array of
+  // {lat, lng} points, at least 3, entered by staff as a coordinate list.
+  // When present, this takes priority over the circle above.
+  geofencePolygon      Json?
   createdAt            DateTime @default(now())
 
   periods EventPeriod[]
@@ -65,17 +72,41 @@ model CheckinCode {
 }
 
 model Device {
-  id              String   @id @default(uuid())
-  clientToken     String   @unique
+  id              String    @id @default(uuid())
+  clientToken     String    @unique
   studentId       String?
-  student         User?    @relation(fields: [studentId], references: [id])
+  student         User?     @relation(fields: [studentId], references: [id])
   fingerprintHash String?
-  firstSeenAt     DateTime @default(now())
-  lastSeenAt      DateTime @updatedAt
+  firstSeenAt     DateTime  @default(now())
+  lastSeenAt      DateTime  @updatedAt
+
+  // Set only through the staff-supervised enrollment flow (secretaria).
+  // Distinct from the soft `studentId` binding above (first-login, never
+  // verified by a human) — a verified device is the one that can actually
+  // check in for that student once one exists.
+  verified         Boolean  @default(false)
+  verifiedAt       DateTime?
+  verifiedByStaffId String?
+  verifiedByStaff   User?   @relation("DeviceVerifiedByStaff", fields: [verifiedByStaffId], references: [id])
 
   checkins Checkin[]
 
   @@index([fingerprintHash])
+  @@index([studentId, verified])
+}
+
+model DeviceEnrollmentCode {
+  id              String   @id @default(uuid())
+  studentId       String
+  student         User     @relation("EnrollmentCodeStudent", fields: [studentId], references: [id])
+  code            String
+  issuedByStaffId String
+  issuedByStaff   User     @relation("EnrollmentCodeStaff", fields: [issuedByStaffId], references: [id])
+  issuedAt        DateTime @default(now())
+  expiresAt       DateTime
+  usedAt          DateTime?
+
+  @@index([studentId, expiresAt])
 }
 
 model Checkin {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -49,11 +50,15 @@ export function Home() {
         err && typeof err === "object" && "body" in err
           ? (err.body as { error?: string })?.error
           : undefined;
-      setErrorMessage(
-        message === "invalid_or_expired_code"
-          ? "Código inválido ou expirado. Confira o telão e tente novamente."
-          : "Não foi possível registrar a presença. Verifique sua localização e conexão.",
-      );
+      if (message === "invalid_or_expired_code") {
+        setErrorMessage("Código inválido ou expirado. Confira o telão e tente novamente.");
+      } else if (message === "device_not_enrolled") {
+        setErrorMessage(
+          "Este celular não é o vinculado à sua conta. Procure a equipe ou use o celular vinculado.",
+        );
+      } else {
+        setErrorMessage("Não foi possível registrar a presença. Verifique sua localização e conexão.");
+      }
     },
   });
 
@@ -63,9 +68,14 @@ export function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 gap-6">
       <div className="w-full max-w-sm space-y-1 text-center">
         <p className="text-sm text-slate-400">Olá, {user?.name}</p>
-        <button onClick={logout} className="text-xs text-slate-500 underline">
-          Sair
-        </button>
+        <div className="flex justify-center gap-4">
+          <Link to="/vincular" className="text-xs text-slate-500 underline">
+            Vincular este celular
+          </Link>
+          <button onClick={logout} className="text-xs text-slate-500 underline">
+            Sair
+          </button>
+        </div>
       </div>
 
       {!activeQuery.data?.active && (

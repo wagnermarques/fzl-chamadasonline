@@ -15,12 +15,28 @@ interface PeriodItem {
   eventId: string;
 }
 
+/** Parses "lat,lng" lines pasted by staff into a polygon; ignores blank lines. */
+function parsePolygonText(text: string): { lat: number; lng: number }[] | undefined {
+  const points = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [latStr, lngStr] = line.split(",").map((s) => s.trim());
+      return { lat: Number(latStr), lng: Number(lngStr) };
+    })
+    .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+
+  return points.length >= 3 ? points : undefined;
+}
+
 export function AdminEvents() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [radius, setRadius] = useState("150");
+  const [polygonText, setPolygonText] = useState("");
 
   const eventsQuery = useQuery({
     queryKey: ["admin-events"],
@@ -40,6 +56,7 @@ export function AdminEvents() {
           geofenceLat: Number(lat),
           geofenceLng: Number(lng),
           geofenceRadiusMeters: Number(radius),
+          geofencePolygon: parsePolygonText(polygonText),
         }),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-events"] }),
@@ -47,7 +64,12 @@ export function AdminEvents() {
 
   return (
     <div className="max-w-xl mx-auto p-6 space-y-6">
-      <h1 className="text-xl font-semibold">Eventos</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Eventos</h1>
+        <Link to="/admin/enroll" className="text-sm underline text-slate-400">
+          Vincular celular de aluno
+        </Link>
+      </div>
 
       <form
         onSubmit={(e) => {
@@ -85,6 +107,19 @@ export function AdminEvents() {
             value={radius}
             onChange={(e) => setRadius(e.target.value)}
             required
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">
+            Polígono do terreno (opcional, uma coordenada "lat,lng" por linha — se preenchido, tem
+            prioridade sobre o raio acima)
+          </label>
+          <textarea
+            className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 font-mono text-sm"
+            rows={4}
+            placeholder={"-23.55052,-46.633308\n-23.55048,-46.63290\n-23.55110,-46.63285\n-23.55115,-46.63305"}
+            value={polygonText}
+            onChange={(e) => setPolygonText(e.target.value)}
           />
         </div>
         <button

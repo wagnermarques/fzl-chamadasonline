@@ -1,0 +1,219 @@
+#+TITLE: Como o app estático no GitHub Pages acessa o banco de dados no Supabase
+#+AUTHOR: Chamada Online
+#+LANGUAGE: pt-BR
+#+OPTIONS: toc:2 num:t
+
+* Visão geral
+
+O GitHub Pages hospeda *apenas arquivos estáticos* (HTML, CSS, JS,
+imagens). Ele não executa Node.js, não roda um servidor, não tem acesso a
+variáveis de ambiente secretas em tempo de execução, e absolutamente tudo
+que é publicado lá é público — qualquer pessoa pode abrir o JavaScript do
+site e ler o código-fonte inteiro.
+
+Por causa disso, o navegador do aluno (rodando o PWA a partir do GitHub
+Pages) *nunca* conversa diretamente com o banco de dados Postgres do
+Supabase. Em vez disso, existe uma camada intermediária: nossa própria API
+(Fastify + Prisma), que roda em um servidor de verdade (Render) e é a
+única peça do sistema que conhece a senha do banco.
+
+O fluxo, em uma frase: *PWA (GitHub Pages) → API (Render) → Postgres
+(Supabase)*.
+
+#+begin_example
+┌─────────────────────┐      HTTPS       ┌──────────────────────┐      conexão SQL      ┌───────────────────┐
+│  PWA estático        │ ───────────────▶ │  API Fastify          │ ─────────────────────▶ │  Postgres          │
+│  (GitHub Pages)       │ ◀─────────────── │  (Render, Node.js)    │ ◀───────────────────── │  (Supabase)        │
+│  navegador do aluno   │   JSON (fetch)   │  valida tudo aqui     │   Prisma + senha      │  guarda os dados   │
+└─────────────────────┘                  └──────────────────────┘                        └───────────────────┘
+#+end_example
+
+* Por que não acessar o Supabase direto do navegador?
+
+O Supabase até oferece esse caminho (biblioteca ~supabase-js~ rodando no
+navegador, com uma "publishable key" pública e políticas de segurança no
+próprio banco, chamadas de *Row Level Security* — RLS). Foi considerado,
+mas decidimos *não* usar esse caminho neste projeto, por dois motivos:
+
+1. Toda a lógica antifraude que já construímos — validação do código
+   rotativo exibido no telão, cálculo de geofence (distância até o
+   evento), e o sinalizador de "mesmo dispositivo usado por dois alunos
+   diferentes" — vive hoje como código no servidor (~apps/api~). Migrar
+   isso para dentro do Supabase significaria reescrever tudo como
+   políticas SQL (RLS) ou funções do banco, um trabalho grande e mais
+   arriscado de auditar.
+2. Com uma API própria, quem decide se um check-in é válido é *sempre* o
+   servidor — nunca o navegador do aluno. Isso é importante: qualquer
+   validação feita só no navegador pode ser inspecionada e manipulada por
+   quem souber abrir o DevTools. Manter as regras no servidor é o que
+   garante que um aluno não consiga, por exemplo, forjar uma resposta de
+   "presença registrada" sem realmente passar pelas checagens.
+
+Ou seja: o Supabase aqui é usado *só* como banco de dados Postgres
+hospedado — não como plataforma de autenticação, nem como camada de
+acesso direto ao dado. É a peça mais parecida com "alugar um Postgres na
+nuvem" que o Supabase oferece.
+
+* As três peças e onde cada uma mora
+
+** 1. PWA (frontend) — GitHub Pages
+
+- Arquivos estáticos gerados pelo Vite a partir de ~apps/web~.
+- Publicado automaticamente pelo GitHub Actions
+  (~.github/workflows/deploy-pages.yml~) toda vez que há um push em
+  ~main~ que mexe em ~apps/web~.
+- Não tem nenhuma credencial de banco de dados. A única coisa que ele sabe
+  é a *URL pública* da nossa API (ex:
+  ~https://chamadasonline-api.onrender.com~), configurada em tempo de
+  build pela variável ~VITE_API_URL~.
+- Todo o código aqui é público — inclusive essa URL da API. Isso é seguro,
+  porque a URL da API não é secreta; o que protege os dados são as
+  validações que a API faz (login, código do evento, etc.), não o sigilo
+  do endereço.
+
+** 2. API (backend) — Render
+
+- Código em ~apps/api~ (Fastify + Prisma), o mesmo que já existia rodando
+  localmente durante o desenvolvimento — nada da lógica de negócio mudou.
+- Roda como um serviço Node.js de verdade no Render, configurado pelo
+  arquivo ~render.yaml~ na raiz do repositório.
+- É a *única* peça do sistema que tem a string de conexão do Postgres
+  (~DATABASE_URL~) e a ~JWT_SECRET~ usada para assinar os tokens de login
+  dos alunos/equipe. Essas variáveis ficam guardadas no painel do Render
+  (criptografadas), nunca no código-fonte, nunca no build do frontend.
+- Recebe requisições HTTP do PWA (ex: ~POST /checkins~), valida tudo
+  (código do evento, geolocalização, vínculo de dispositivo — ver
+  ~apps/api/src/routes/checkins.ts~) e só então grava no banco.
+
+** 3. Banco de dados — Supabase (Postgres)
+
+- Um projeto Supabase é, na essência, um Postgres gerenciado — mais um
+  conjunto de serviços extras (Auth, Storage, API REST automática) que
+  *não* estamos usando neste projeto.
+- A API se conecta a ele exatamente como se conectaria a qualquer outro
+  Postgres: uma string de conexão (~DATABASE_URL~) no formato
+  ~postgresql://usuario:senha@host:porta/banco~, lida pelo Prisma
+  (~apps/api/prisma/schema.prisma~).
+- Usamos a porta de *connection pooling* do Supabase (6543, via pgbouncer)
+  em vez da conexão direta (5432), porque a API pode escalar e abrir/
+  fechar conexões com frequência — o pooler evita esgotar o limite de
+  conexões simultâneas do Postgres.
+
+* As credenciais do Supabase e para que cada uma serve
+
+O painel do Supabase expõe várias credenciais diferentes. É importante
+entender o papel de cada uma, porque nem todas podem ser expostas do mesmo
+jeito:
+
+| Credencial                 | Para que serve                                          | Onde pode aparecer                          |
+|-----------------------------+----------------------------------------------------------+----------------------------------------------|
+| Connection string (Postgres) | Conexão SQL direta (é o que o Prisma usa)               | *Só* no servidor (Render), nunca no frontend |
+| ~SUPABASE_SECRET_KEY~        | Acesso total à API REST do Supabase, ignora RLS          | *Só* no servidor, se um dia for usada         |
+| ~SUPABASE_PUBLISHABLE_KEY~   | Chave pública para o cliente ~supabase-js~ no navegador  | Segura para expor publicamente                |
+| ~SUPABASE_JWKS_URL~          | Verificar tokens JWT emitidos pelo Supabase Auth          | Informação pública                            |
+
+Neste projeto, como não usamos a biblioteca ~supabase-js~ nem o Supabase
+Auth (a API tem seu próprio login com matrícula + PIN e emite seus
+próprios tokens JWT), só a *connection string* do Postgres é realmente
+usada. As demais chaves (~SUPABASE_PUBLISHABLE_KEY~, ~SUPABASE_SECRET_KEY~,
+~SUPABASE_JWKS_URL~) ficam guardadas no ~.env~ do servidor apenas para o
+caso de, no futuro, adicionarmos algum recurso que use a plataforma
+Supabase diretamente (por exemplo, guardar uma foto de auditoria no
+Supabase Storage).
+
+A regra mais importante: *a ~SUPABASE_SECRET_KEY~ e a connection string
+com senha nunca podem ir para dentro de ~apps/web~ ou de qualquer coisa
+publicada no GitHub Pages.* Qualquer coisa que entra no build do frontend
+é pública — é como colar a senha do banco em um cartaz.
+
+* Passo a passo do que acontece quando um aluno marca presença
+
+1. O aluno abre o PWA instalado a partir do GitHub Pages
+   (~https://wagnermarques.github.io/fzl-chamadasonline/~).
+2. Ele faz login (matrícula + PIN). O navegador envia essa requisição
+   para a URL da API no Render (configurada em ~VITE_API_URL~ no momento
+   do build do site).
+3. A API confere o PIN, gera um token de sessão (JWT) e devolve para o
+   navegador, que guarda no ~localStorage~.
+4. O aluno digita o código exibido no telão e toca em "Marcar Presença".
+   O navegador captura a geolocalização e envia tudo (token, código,
+   coordenadas, ID do dispositivo) para ~POST /checkins~ na API.
+5. É *a API*, rodando no Render, que:
+   - confere se o código bate com o que está ativo naquele período;
+   - calcula a distância até o evento (geofence);
+   - confere se aquele dispositivo já está vinculado a outro aluno;
+   - só então grava o check-in no Postgres do Supabase, usando a
+     ~DATABASE_URL~ que só ela conhece.
+6. A API devolve "ok" para o navegador. Em nenhum momento o navegador do
+   aluno chega perto do banco de dados — ele só conversa com a API, por
+   HTTPS.
+
+* CORS: por que a API precisa saber quem tem permissão de chamá-la
+
+Como o PWA (GitHub Pages) e a API (Render) vivem em domínios diferentes, o
+navegador aplica a política de *CORS* (Cross-Origin Resource Sharing):
+por padrão, JavaScript rodando em um domínio não pode chamar uma API em
+outro domínio, a menos que essa API diga explicitamente "esse domínio tem
+permissão".
+
+A API está configurada (~apps/api/src/server.ts~ + variável de ambiente
+~ALLOWED_ORIGINS~) para aceitar requisições vindas apenas de:
+
+- ~http://localhost:5173~ — o servidor de desenvolvimento local (Vite);
+- ~https://wagnermarques.github.io~ — o site publicado no GitHub Pages.
+
+Qualquer outro domínio que tentar chamar a API a partir de um navegador
+recebe a resposta, mas *sem* o cabeçalho que autoriza o JavaScript a lê-
+la — o navegador bloqueia o acesso ao resultado. Isso não é uma proteção
+contra um atacante que fala HTTP diretamente (curl, Postman), mas evita
+que outro site qualquer monte uma página que finja ser o nosso app e
+chame nossa API usando a sessão de um usuário.
+
+* Rodando localmente: por que funciona igual
+
+Durante o desenvolvimento, o mesmo mecanismo se aplica, só que tudo roda
+na própria máquina:
+
+- O frontend (~npm run dev:web~) sobe em ~http://localhost:5173~.
+- A API (~npm run dev:api~) sobe em ~http://localhost:3333~, com sua
+  ~DATABASE_URL~ apontando para o Postgres do Supabase (o mesmo banco de
+  produção, já que optamos por um único banco compartilhado em vez de
+  manter um Postgres local via Docker separado).
+- O proxy do Vite (~apps/web/vite.config.ts~) redireciona chamadas para
+  ~/api/*~ para ~http://localhost:3333~, então o código do frontend nem
+  precisa saber se está falando com a API local ou com a hospedada — a
+  variável ~VITE_API_URL~ só é definida no build de produção.
+
+Ou seja: o mesmo desenho — navegador fala só com a API, API fala com o
+Postgres — vale tanto em ~localhost~ quanto no GitHub Pages. O que muda é
+só o endereço da API (local vs. Render) e a origem que a API precisa
+autorizar via CORS.
+
+* Resumo das variáveis de ambiente envolvidas
+
+| Variável            | Onde vive                       | Pode ser pública? |
+|----------------------+----------------------------------+---------------------|
+| ~DATABASE_URL~        | Render (painel, criptografado)  | Não                |
+| ~JWT_SECRET~           | Render (painel, criptografado)  | Não                |
+| ~ALLOWED_ORIGINS~      | Render                          | Sim (é só uma lista de domínios) |
+| ~VITE_API_URL~         | GitHub Actions (variável de repo) → embutida no build do frontend | Sim (é só uma URL) |
+| ~SUPABASE_SECRET_KEY~  | ~apps/api/.env~ local (não usada em produção ainda) | Não |
+| ~SUPABASE_PUBLISHABLE_KEY~ | ~apps/api/.env~ local (não usada ainda) | Sim, se um dia for usada no frontend |
+
+* Checklist para deixar tudo no ar
+
+1. Pegar a connection string do Postgres em *Supabase → Settings →
+   Database → Connection string* (usar a de "Connection pooling", porta
+   6543) e colocar em ~DATABASE_URL~ no ~.env~ local e no painel do
+   Render.
+2. Criar o serviço no Render a partir do ~render.yaml~ (Render →
+   New → Blueprint, apontando para este repositório).
+3. Definir ~DATABASE_URL~ e conferir ~ALLOWED_ORIGINS~ no painel do
+   Render (o ~render.yaml~ já deixa ~JWT_SECRET~ gerado automaticamente).
+4. Depois que o serviço existir, copiar a URL pública dele (algo como
+   ~https://chamadasonline-api.onrender.com~) e configurar como variável
+   ~API_URL~ em *GitHub → Settings → Secrets and variables → Actions →
+   Variables* do repositório.
+5. Ativar o GitHub Pages em *Settings → Pages → Source: GitHub Actions*.
+6. Dar push em ~main~ — o workflow ~deploy-pages.yml~ builda e publica o
+   site automaticamente.

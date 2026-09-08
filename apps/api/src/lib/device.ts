@@ -60,3 +60,53 @@ export async function bindDeviceIfUnbound(deviceId: string, studentId: string) {
     data: { studentId },
   });
 }
+
+/**
+ * The device a staff member verified in person for this student (secretaria
+ * enrollment), if any. Once this exists, only this device may check in for
+ * this student — see routes/checkins.ts.
+ */
+export async function getVerifiedDeviceForStudent(studentId: string) {
+  return prisma.device.findFirst({ where: { studentId, verified: true } });
+}
+
+/**
+ * Completes an in-person enrollment: the device making this request becomes
+ * the sole verified device for the student, replacing any previous one
+ * (e.g. a lost or replaced phone) rather than leaving both marked verified.
+ */
+export async function enrollVerifiedDevice({
+  studentId,
+  staffId,
+  clientToken,
+  fingerprintHash,
+}: {
+  studentId: string;
+  staffId: string;
+  clientToken: string;
+  fingerprintHash?: string;
+}) {
+  await prisma.device.updateMany({
+    where: { studentId, verified: true },
+    data: { verified: false, verifiedAt: null, verifiedByStaffId: null, studentId: null },
+  });
+
+  return prisma.device.upsert({
+    where: { clientToken },
+    update: {
+      studentId,
+      fingerprintHash,
+      verified: true,
+      verifiedAt: new Date(),
+      verifiedByStaffId: staffId,
+    },
+    create: {
+      clientToken,
+      studentId,
+      fingerprintHash,
+      verified: true,
+      verifiedAt: new Date(),
+      verifiedByStaffId: staffId,
+    },
+  });
+}
