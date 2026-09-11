@@ -32,6 +32,8 @@ jobs:
       - run: npm ci
 
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Build web app
         # VITE_API_URL: set this repo variable (Settings -> Secrets and
