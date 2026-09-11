@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: Org Image with HTML & LaTeX Export Attributes
+# key: img
+# --
+#+CAPTION: ${1:Descrição da imagem}
+#+NAME: fig:${2:rotulo}
+#+ATTR_HTML: :width ${3:800px} :align ${4:center}
+#+ATTR_LATEX: :width ${5:0.8\textwidth} :placement [${6:htbp}]
+#+ATTR_ORG: :width ${7:600}
+[[${8:./images/}${9:nome_da_imagem.png}]]
+$0

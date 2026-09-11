@@ -1,0 +1,142 @@
+#+TITLE: Sistema Chamada Online - Guia de Funcionamento e Proteções Antifraude
+#+AUTHOR: Equipe Chamada Online
+#+LANGUAGE: pt-BR
+#+OPTIONS: toc:2 num:t
+
+* 1. Visão Geral do Sistema
+
+O *Chamada Online* é uma solução desenvolvida no formato *PWA (Progressive Web App)* para controle de presença ágil e confiável em eventos escolares, assembleias ou aulas com grande volume de participantes (ex: ~2.000 alunos).
+
+O objetivo principal é substituir chamadas manuais em papel e evitar filas demoradas, ao mesmo tempo em que implementa *mecanismos de defesa em camadas* para impedir fraudes — especialmente o cenário em que um aluno presente tenta marcar presença para um colega ausente, ou um aluno ausente tenta registrar presença remotamente de sua casa.
+
+#+begin_example
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            FLUXO DE FUNCIONAMENTO                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+       [ Telão / Projetor ]                   [ Aluno / Smartphone ]
+       Exibe código dinâmico                 Lê código do telão + GPS
+          (muda a cada 45s)                 Abre PWA e envia presença
+                 │                                      │
+                 │                                      ▼
+                 │                         ┌───────────────────────────┐
+                 │                         │      PWA (Frontend)       │
+                 │                         │     (GitHub Pages)        │
+                 │                         └─────────────┬─────────────┘
+                 │                                       │ HTTPS / JSON
+                 ▼                                       ▼
+       ┌───────────────────────────────────────────────────────────────┐
+       │                        API (Fastify)                          │
+       │                       (Serviço Render)                        │
+       │                                                               │
+       │  Camadas de Validação Antifraude:                             │
+       │  1. Autenticação & Sessão (JWT / Matrícula + PIN)             │
+       │  2. Janela de Horário do Período (Ativo / Inativo)            │
+       │  3. Código Rotativo Válido (Confere segredo TOTP do telão)    │
+       │  4. Vínculo de Dispositivo Verificado (Hard check)            │
+       │  5. Geofencing GPS (Raio circular ou Polígono do terreno)     │
+       │  6. Detecção de Reúso de Aparelho / Fingerprint (Flags)       │
+       └───────────────────────────────┬───────────────────────────────┘
+                                       │ Prisma ORM / SQL
+                                       ▼
+                       ┌───────────────────────────────┐
+                       │     PostgreSQL (Supabase)     │
+                       │    Armazena Check-in e Logs   │
+                       └───────────────────────────────┘
+#+end_example
+
+* 2. Arquitetura e Componentes
+
+O projeto adota uma estrutura em monorepo com três camadas bem delimitadas:
+
+1. *PWA Aluno / Painel Web (~apps/web~)*:
+   - Desenvolvido em *React*, *Vite*, *Tailwind CSS* e *vite-plugin-pwa*.
+   - Leve, instala direto na tela inicial do celular do aluno sem necessidade de Google Play Store ou App Store.
+   - Funciona estaticamente hospedado no *GitHub Pages*.
+2. *API Backend (~apps/api~)*:
+   - Desenvolvida em *Node.js* com *Fastify* e *Prisma ORM*.
+   - Executa toda a lógica de negócio, cálculo de geolocalização e criptografia de códigos rotativos.
+   - Hospedada no *Render*.
+3. *Banco de Dados (~PostgreSQL no Supabase~)*:
+   - Armazena alunos, equipe (staff), eventos, períodos de chamada, dispositivos cadastrados e registros de check-in com auditoria de fraudes.
+
+* 3. Como Evitar que um Aluno Marque Presença para Outro (Mecanismos Antifraude)
+
+O maior desafio em sistemas de chamada digital por celular é a tentativa de fraude ("burlar a chamada"). Os cenários clássicos são:
+1. *Fraude Remota:* O aluno em casa pede o código para um amigo na sala e faz login para marcar presença.
+2. *Fraude por Compartilhamento de Celular:* Um aluno presente faz logout de sua conta no celular e faz login na conta de um ou mais amigos para marcar presença por eles no mesmo aparelho.
+3. *Fraude de Múltiplos Dispositivos:* Um aluno leva o celular do amigo para o evento.
+
+Para mitigar esses problemas com alta eficácia sem inviabilizar a usabilidade, o sistema aplica *4 linhas de defesa complementares*:
+
+#+CAPTION: Matriz de Defesa Antifraude
+| Mecanismo de Defesa | Vetor de Ataque Bloqueado | Tipo de Ação |
+|---------------------+---------------------------+--------------|
+| *Código Rotativo (45s)* | Envio de código por WhatsApp para quem está fora | Bloqueio imediato se expirado |
+| *Geofencing (GPS/Polígono)* | Tentativa de check-in fora do local do evento | Sinalização (Flag) de auditoria |
+| *Vínculo de Dispositivo Automático* | Um único celular registrando vários alunos | Sinalização (Flag) de auditoria |
+| *Vínculo Verificado (Secretaria)* | Empréstimo de login ou troca de aparelho | *Bloqueio Total (HTTP 403)* |
+
+** 3.1. Primeira Camada: Código Rotativo Projetado (Time-Based Code)
+
+- *Como funciona*: No palco ou telão do evento, a equipe projeta a tela do sistema que exibe um código curto alfanumérico de 5 caracteres.
+- *Janela de tempo*: O código se renova automaticamente a cada *45 segundos* com base em um segredo criptográfico do período.
+- *Por que previne fraude*:
+  - O aluno que está em casa não tem acesso visual ao telão.
+  - Se um colega na sala tentar mandar o código via mensagem (WhatsApp, Telegram), o tempo de digitação, envio, recebimento e preenchimento frequentemente ultrapassa os 45 segundos de validade, invalidando a tentativa.
+
+** 3.2. Segunda Camada: Geofencing Dinâmico (GPS por Raio ou Polígono)
+
+- *Como funciona*: No momento do check-in, o PWA solicita a localização exata do dispositivo via API do navegador (~navigator.geolocation~).
+- *Suporte a Polígonos*: O sistema permite configurar:
+  - Um *raio circular* (ex: 150 metros ao redor da coordenada central da escola).
+  - Um *polígono geográfico* (uma lista de coordenadas de latitude/longitude desenhando os muros reais do campus escolar).
+- *Por que previne fraude*:
+  - Mesmo que alguém em casa receba o código rotativo a tempo, suas coordenadas GPS estarão fora da área autorizada. O backend detecta a distância e registra a presença como *Flagged: OUTSIDE_GEOFENCE*.
+
+** 3.3. Terceira Camada: Identificação e Vínculo de Dispositivo (Client Token & Fingerprint)
+
+- *Como funciona*: Quando o aluno acessa o PWA pela primeira vez, o navegador gera um identificador persistente (~clientToken~ no ~localStorage~) associado a um fingerprint do dispositivo.
+- *Detecção de Reúso*:
+  - Se o "Aluno A" faz login e marca presença no Aparelho X, o aparelho fica associado ao Aluno A.
+  - Se, logo em seguida, o "Aluno A" deslogar e o "Aluno B" entrar no mesmo Aparelho X para marcar presença, o backend detecta que o ~deviceId~ já pertence a outro aluno.
+  - O sistema adiciona automaticamente a flag: *DEVICE_BOUND_TO_OTHER_STUDENT*.
+
+** 3.4. Quarta Camada: Vínculo Verificado Pessoalmente na Secretaria (Enrollment)
+
+Esta é a defesa mais forte e definitiva contra fraudes sistemáticas:
+
+1. *Cadastro Presencial*: O aluno comparece à secretaria ou ao posto da equipe portando documento de identificação e seu celular.
+2. *Geração de Código de Vínculo*: O administrador acessa a rota ~/admin/enroll~, busca o aluno pela matrícula e gera um código de pareamento temporário de 6 dígitos.
+3. *Fixação do Aparelho*: O aluno entra em ~/vincular~ no seu próprio smartphone e digita o código. A partir desse instante, aquele smartphone torna-se o *Dispositivo Verificado* (~verified: true~) exclusivo do aluno.
+4. *Regra Rígida de Bloqueio*:
+   - A partir do momento em que um aluno possui um dispositivo verificado, a API *rejeita com erro 403 (`device_not_enrolled`)* qualquer tentativa de chamada vinda de computadores, celulares emprestados ou emuladores.
+   - Só aquele aparelho físico cadastrado consegue registrar a presença dele.
+
+** 3.5. Auditoria Silenciosa (Silent Flagging)
+
+Para as verificações de geolocalização e vínculo automático (sem validação prévia na secretaria):
+- A API responde ~status: "ok"~ na tela do aluno, mas grava internamente no banco os motivos de suspeita (~flagged: true~, ~flagReasons: [...]~).
+- *Vantagem pedagógica/operacional*: Não gera tumulto na porta do evento e não ensina o fraudador sobre as regras exatas do sistema. A equipe pedagógica analisa a listagem filtrando apenas os check-ins sinalizados no painel administrativo após o encerramento.
+
+* 4. Guia Rápido de Uso Operacional
+
+** 4.1. Para a Equipe / Professores (Staff)
+1. *Acessar o Painel*: Login em ~/admin~ com e-mail e PIN de staff.
+2. *Criar/Abrir Evento*: Selecionar o evento e o período da aula/palestra.
+3. *Abrir Telão*: Clicar no botão "Modo Telão / Projetor" para exibir o código rotativo em tela cheia.
+4. *Acompanhar Presenças*: A aba de presenças atualiza em tempo real, destacando em vermelho qualquer aluno sinalizado com suspeita de fraude.
+5. *Exportar Relatório*: Ao final do evento, exportar a lista em CSV para lançamento no sistema acadêmico.
+
+** 4.2. Para os Alunos
+1. *Abrir o PWA*: Acessar o link divulgado ou escanear o QR Code de entrada da escola.
+2. *Instalar*: Tocar em "Adicionar à tela inicial" no navegador.
+3. *Fazer Login*: Digitar matrícula e PIN pessoal (os últimos 4 dígitos da matrícula por padrão).
+4. *Confirmar Presença*: Olhar o código de 5 letras exibido no telão, digitá-lo no app e autorizar a geolocalização.
+
+* 5. Checklist de Segurança Recomendado para Grandes Eventos
+
+- [ ] Cadastrar o perímetro geográfico (polígono ou raio) com margem adequada (ex: 50 a 100m) para compensar imprecisões do GPS de celulares em ambientes fechados.
+- [ ] Garantir que o telão esteja visível apenas para os alunos que estão fisicamente no interior do recinto.
+- [ ] Para turmas críticas ou avaliações de frequência obrigatória, realizar o vínculo de dispositivo verificado na secretaria com antecedência.
+- [ ] Exportar e auditar os registros sinalizados (~flagged~) ao término de cada período.

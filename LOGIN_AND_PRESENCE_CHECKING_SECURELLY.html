@@ -1,0 +1,544 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR" xml:lang="pt-BR">
+<head>
+<!-- 2026-09-11 sex 16:17 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plano de Aula: Autenticação OAuth2/Keycloak e Segurança Antifraude em Chamadas Digitais</title>
+<meta name="author" content="Wagner Marques / Equipe Chamada Online" />
+<meta name="generator" content="Org Mode" />
+<style type="text/css">
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { }
+</style>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">Plano de Aula: Autenticação OAuth2/Keycloak e Segurança Antifraude em Chamadas Digitais</h1>
+<div id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgd7646c7">1. 1. Objetivos da Aula</a></li>
+<li><a href="#org0ef2d24">2. 2. Parte 1: Como Funciona o OAuth 2.0 / OIDC com Keycloak (Passo a Passo)</a>
+<ul>
+<li><a href="#org7c5ac8b">2.1. 2.1. O que é o PKCE e por que ele é obrigatório?</a></li>
+<li><a href="#orgfea5b5a">2.2. 2.2. A anatomia do Token JWT emitido pelo Keycloak</a></li>
+</ul>
+</li>
+<li><a href="#org3ee452a">3. 3. Parte 2: O Cenário Crítico de Fraude</a></li>
+<li><a href="#orgd4af609">4. 4. Parte 3: As Camadas de Proteção Antifraude do Projeto</a>
+<ul>
+<li><a href="#orgc12981d">4.1. 4.1. Defesa 1: Vínculo de Dispositivo Automático (<code>clientToken</code>)</a></li>
+<li><a href="#org7037417">4.2. 4.2. Defesa 2: Impressão Digital do Dispositivo (<code>fingerprintHash</code>)</a></li>
+<li><a href="#orgba9b019">4.3. 4.3. Defesa 3: Vínculo Verificado pela Secretaria (Defesa Rígida / Anti-Empréstimo de Senha)</a></li>
+<li><a href="#orgb05b110">4.4. 4.4. Defesa 4: Auditoria Silenciosa no Painel do Professor / Staff</a></li>
+</ul>
+</li>
+<li><a href="#orgc8cd4cc">5. 5. Resumo Pedagógico para os Alunos</a></li>
+<li><a href="#org03e252c">6. 6. Conclusão da Aula</a></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgd7646c7" class="outline-2">
+<h2 id="orgd7646c7"><span class="section-number-2">1.</span> 1. Objetivos da Aula</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+Ao final desta aula, os alunos/desenvolvedores serão capazes de:
+</p>
+<ol class="org-ol">
+<li>Compreender o fluxo de autenticação moderno <b>OAuth 2.0 / OpenID Connect (OIDC)</b> usando <b>Authorization Code Flow com PKCE (Proof Key for Code Exchange)</b> em aplicações web estáticas (Single Page Applications / GitHub Pages).</li>
+<li>Entender o papel do <b>Keycloak</b> como Provedor de Identidade (IdP) centralizado e emissor de tokens criptográficos <b>JWT (JSON Web Tokens)</b>.</li>
+<li>Analisar e projetar <b>mecanismos de defesa em camadas</b> contra fraudes em sistemas de presença por geolocalização.</li>
+<li>Responder com precisão ao principal vetor de ataque: <b>"O que impede um aluno presente de pegar o login e a senha do colega ausente e marcar presença para ele usando o próprio celular dentro da sala?"</b></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org0ef2d24" class="outline-2">
+<h2 id="org0ef2d24"><span class="section-number-2">2.</span> 2. Parte 1: Como Funciona o OAuth 2.0 / OIDC com Keycloak (Passo a Passo)</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+Em aplicações hospedadas em ambientes estáticos como o <b>GitHub Pages</b>, o código JavaScript roda 100% no navegador do usuário (cliente público). Não é seguro guardar segredos de cliente (Client Secrets) no frontend, pois qualquer usuário pode abrir o código-fonte no DevTools.
+</p>
+
+<p>
+Por isso, o padrão internacional de segurança exige o fluxo <b>OAuth 2.0 Authorization Code com PKCE (RFC 7636)</b>.
+</p>
+
+<pre class="example" id="orgbb047f2">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                    FLUXO OAUTH 2.0 / OIDC COM PKCE (GITHUB PAGES ➔ KEYCLOAK)             │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+ [ Navegador / PWA ]               [ Keycloak (Auth Server) ]        [ API Backend (Render) ]
+  (GitHub Pages)                     (auth.fzlsoft.com)               (chamadas-api)
+        │                                    │                              │
+ 1. Gera code_verifier                       │                              │
+    e code_challenge (S256)                  │                              │
+        │                                    │                              │
+ 2. Redireciona para login ─────────────────▶│                              │
+    (/auth?client_id=...&amp;code_challenge=...) │                              │
+        │                                    │                              │
+        │                             3. Aluno digita                       │
+        │                                login + senha                      │
+        │                                    │                              │
+ 4. Redireciona de volta ◀───────────────────┤                              │
+    com Authorization Code                   │                              │
+    (?code=XYZ...)                           │                              │
+        │                                    │                              │
+ 5. POST /token ────────────────────────────▶│                              │
+    (code=XYZ + code_verifier)               │                              │
+        │                             6. Confere hash                       │
+        │                                SHA256 do verifier                 │
+        │                                    │                              │
+ 7. Retorna JWT (Access Token) ◀─────────────┤                              │
+    (roles: chamadas-user, etc.)             │                              │
+        │                                    │                              │
+ 8. POST /auth/keycloak (JWT + clientToken) ───────────────────────────────▶│
+        │                                                                   │ 9. Valida JWT,
+        │                                                                   │    confere roles,
+        │                                                                   │    auto-provisiona
+        │                                                                   │    aluno no banco e
+        │                                                                   │    associa o celular
+        │◀────────────────── 10. Sessão Ativa (Token API) ──────────────────│
+</pre>
+</div>
+<div id="outline-container-org7c5ac8b" class="outline-3">
+<h3 id="org7c5ac8b"><span class="section-number-3">2.1.</span> 2.1. O que é o PKCE e por que ele é obrigatório?</h3>
+<div class="outline-text-3" id="text-2-1">
+<ol class="org-ol">
+<li><b>Code Verifier</b>: O navegador gera uma string secreta aleatória de alta entropia.</li>
+<li><b>Code Challenge</b>: O navegador calcula o hash SHA-256 do <code>code_verifier</code> e envia ao Keycloak na requisição inicial de login.</li>
+<li><b>Troca Segura</b>: Ao receber o código de autorização (<code>code=XYZ</code>), o frontend envia o <code>code_verifier</code> original. O Keycloak calcula o SHA-256 dele e compara com o <code>code_challenge</code> recebido no passo anterior.</li>
+<li><b>Proteção</b>: Mesmo que um software malicioso intercepte a URL com o código <code>code=XYZ</code>, ele não conseguirá obter o token porque não possui o <code>code_verifier</code> que ficou na memória do navegador legítimo.</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgfea5b5a" class="outline-3">
+<h3 id="orgfea5b5a"><span class="section-number-3">2.2.</span> 2.2. A anatomia do Token JWT emitido pelo Keycloak</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+Após o login, o Keycloak emite um token assinado digitalmente contendo os dados e os papéis do aluno:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-json">{
+  "iss": "https://auth.fzlsoft.com/realms/fzlbpms",
+  "sub": "4a71d87e-9189-4d6b-8012-e87a93cb33a1",
+  "preferred_username": "20261001",
+  "name": "Maria Silva",
+  "email": "maria.silva@escola.edu.br",
+  "realm_access": {
+    "roles": [
+      "default-roles-fzlbpms",
+      "moodle-student",
+      "chamadas-user"
+    ]
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org3ee452a" class="outline-2">
+<h2 id="org3ee452a"><span class="section-number-2">3.</span> 3. Parte 2: O Cenário Crítico de Fraude</h2>
+<div class="outline-text-2" id="text-3">
+<blockquote>
+<p>
+<b>O Problema:</b> 
+"O Aluno João está em casa (ausente). Ele envia seu usuário e senha do Keycloak pelo WhatsApp para a aluna Maria (presente na sala).
+Maria está fisicamente dentro da escola (dentro do raio de geofence do evento e olhando para o telão). 
+Maria faz login com a conta de João no próprio smartphone dela e digita o código do telão para marcar presença para ele. 
+Como o sistema impede ou detecta essa fraude?"
+</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-orgd4af609" class="outline-2">
+<h2 id="orgd4af609"><span class="section-number-2">4.</span> 4. Parte 3: As Camadas de Proteção Antifraude do Projeto</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+O sistema <b>Chamada Online</b> foi projetado exatamente para antecipar esse vetor de ataque através de <b>4 linhas de defesa progressivas</b>:
+</p>
+
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+<caption class="t-above"><span class="table-number">Table 1:</span> Camadas de Defesa Antifraude</caption>
+
+<colgroup>
+<col  class="org-right" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-right">Camada</th>
+<th scope="col" class="org-left">Mecanismo</th>
+<th scope="col" class="org-left">Onde atua</th>
+<th scope="col" class="org-left">Resultado contra o ataque</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-right">1</td>
+<td class="org-left"><b>Código Rotativo (45s)</b></td>
+<td class="org-left">Telão do Recinto</td>
+<td class="org-left">Impede que João marque sozinho de casa</td>
+</tr>
+
+<tr>
+<td class="org-right">2</td>
+<td class="org-left"><b>Geofencing por Polígono</b></td>
+<td class="org-left">GPS do Celular</td>
+<td class="org-left">Obriga a requisição a vir de dentro da escola</td>
+</tr>
+
+<tr>
+<td class="org-right">3</td>
+<td class="org-left"><b>Vínculo de Dispositivo Automático + Fingerprint</b></td>
+<td class="org-left">Browser Storage + Canvas</td>
+<td class="org-left"><b>Sinaliza (Flag)</b>: "Mesmo celular usado por 2 alunos"</td>
+</tr>
+
+<tr>
+<td class="org-right">4</td>
+<td class="org-left"><b>Vínculo Verificado na Secretaria (Enrollment)</b></td>
+<td class="org-left">Pareamento Físico de Aparelho</td>
+<td class="org-left"><b>Bloqueio Imediato (HTTP 403 Forbidden)</b></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="outline-container-orgc12981d" class="outline-3">
+<h3 id="orgc12981d"><span class="section-number-3">4.1.</span> 4.1. Defesa 1: Vínculo de Dispositivo Automático (<code>clientToken</code>)</h3>
+<div class="outline-text-3" id="text-4-1">
+<ul class="org-ul">
+<li>Quando Maria abre o PWA pela primeira vez no seu celular para marcar a própria presença, o app gera um UUID persistente (<code>clientToken</code>) gravado no armazenamento local do navegador (<code>localStorage</code>).</li>
+<li>O banco de dados registra: <code>Dispositivo [Token-ABC] pertence a Maria</code>.</li>
+<li>Quando Maria faz logout e entra com a conta de João no <b>mesmo celular</b>, o PWA envia o mesmo <code>Token-ABC</code> com o ID de João.</li>
+<li><p>
+A API detecta a colisão no backend (<code>apps/api/src/lib/device.ts</code>):
+</p>
+<div class="org-src-container">
+<pre class="src src-typescript">if (deviceStudentId &amp;&amp; deviceStudentId !== requestingStudentId) {
+  reasons.push(FLAG_REASONS.DEVICE_BOUND_TO_OTHER_STUDENT);
+}
+</pre>
+</div></li>
+<li><b>Ação</b>: O check-in é gravado como <b>FLAGGED</b> (suspeito) com o motivo <code>device_bound_to_other_student</code>.</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org7037417" class="outline-3">
+<h3 id="org7037417"><span class="section-number-3">4.2.</span> 4.2. Defesa 2: Impressão Digital do Dispositivo (<code>fingerprintHash</code>)</h3>
+<div class="outline-text-3" id="text-4-2">
+<ul class="org-ul">
+<li><b>"E se Maria abrir uma Aba Anônima para limpar o localStorage?"</b></li>
+<li>O PWA calcula o <b>Browser Fingerprint</b> (combinação de resolução de tela, GPU Canvas rendering, WebGL, sistema operacional e timezone).</li>
+<li>Mesmo sem o <code>clientToken</code>, a API compara os hashes de hardware e adiciona a flag:
+<code>SIMILAR_FINGERPRINT_MULTIPLE_STUDENTS</code>.</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgba9b019" class="outline-3">
+<h3 id="orgba9b019"><span class="section-number-3">4.3.</span> 4.3. Defesa 3: Vínculo Verificado pela Secretaria (Defesa Rígida / Anti-Empréstimo de Senha)</h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+Esta é a solução definitiva contra o compartilhamento de credenciais:
+</p>
+
+<ol class="org-ol">
+<li><b>Cadastro Presencial do Smartphone</b>:
+<ul class="org-ul">
+<li>No início do período letivo, cada aluno comparece pessoalmente à secretaria com seu smartphone.</li>
+<li>O funcionário da escola abre o painel (<code>/admin/enroll</code>), confirma o documento do aluno e gera um código de pareamento de uso único de 6 dígitos válido por 2 minutos.</li>
+<li>O aluno digita esse código no seu celular na tela (<code>/vincular</code>).</li>
+<li>O banco grava aquele aparelho específico como <b>Dispositivo Verificado</b> (<code>verified: true</code>) de João.</li>
+</ul></li>
+
+<li><p>
+<b>Execução no Momento da Chamada (<code>apps/api/src/routes/checkins.ts</code>)</b>:
+</p>
+<ul class="org-ul">
+<li>Quando Maria tenta usar a conta de João no celular dela:</li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-typescript">// 1. Busca o dispositivo oficial verificado de João
+const verifiedDevice = await getVerifiedDeviceForStudent(studentId);
+
+// 2. Se João possui um aparelho verificado e a requisição NÃO veio dele:
+if (verifiedDevice &amp;&amp; verifiedDevice.clientToken !== clientToken) {
+  request.log.warn("Tentativa de check-in com celular não autorizado.");
+  return reply.code(403).send({ error: "device_not_enrolled" });
+}
+</pre>
+</div></li>
+
+<li><b>Resultado</b>:
+<ul class="org-ul">
+<li>A API retorna imediatamente <b>HTTP 403 Forbidden (`device<sub>not</sub><sub>enrolled</sub>`)</b>.</li>
+<li>Mesmo que Maria tenha a senha do Keycloak de João, esteja sentada na primeira fileira da sala e digite o código do telão perfeitamente, o sistema <b>recusa a presença</b> porque ela não está segurando o smartphone cadastrado de João.</li>
+</ul></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-orgb05b110" class="outline-3">
+<h3 id="orgb05b110"><span class="section-number-3">4.4.</span> 4.4. Defesa 4: Auditoria Silenciosa no Painel do Professor / Staff</h3>
+<div class="outline-text-3" id="text-4-4">
+<ul class="org-ul">
+<li>Nos casos em que a escola opta por não fazer o cadastro prévio na secretaria, o sistema adota a <b>Auditoria Silenciosa</b>:
+<ul class="org-ul">
+<li>O app não exibe mensagem de erro na tela de Maria (evita tumulto durante o evento).</li>
+<li>O painel do professor (<code>/admin/flagged</code>) exibe os registros em tempo real com marcadores vermelhos:
+<ul class="org-ul">
+<li>🔴 <b>João Silva</b>: Sinalizado por <code>device_bound_to_other_student</code> (Aparelho compartilhado com Maria Silva).</li>
+</ul></li>
+<li>A coordenação pedagógica pode aplicar advertência ou anular a presença diretamente no relatório exportado.</li>
+</ul></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc8cd4cc" class="outline-2">
+<h2 id="orgc8cd4cc"><span class="section-number-2">5.</span> 5. Resumo Pedagógico para os Alunos</h2>
+<div class="outline-text-2" id="text-5">
+<pre class="example" id="orgfa26664">
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 ÁRVORE DE DECISÃO DA API                               │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+
+              O aluno enviou a chamada com Token Keycloak válido
+                                      │
+                                      ▼
+                      O código do telão está no prazo de 45s?
+                                  ├── NÃO ➔ REJEITA (Código Expirado)
+                                  └── SIM
+                                      │
+                                      ▼
+                      O aluno tem Dispositivo Verificado na Secretaria?
+                                  ├── SIM ➔ O clientToken bate com o aparelho cadastrado?
+                                  │           ├── NÃO ➔ BLOQUEIA (HTTP 403 device_not_enrolled)
+                                  │           └── SIM ➔ Continua
+                                  └── NÃO (Dispositivo ainda não verificado)
+                                      │
+                                      ▼
+                      O GPS está dentro do Polígono da Escola?
+                                  ├── NÃO ➔ Marca Presença com Flag (OUTSIDE_GEOFENCE)
+                                  └── SIM ➔ Continua
+                                      │
+                                      ▼
+                      O aparelho ou fingerprint já pertence a outro aluno?
+                                  ├── SIM ➔ Marca Presença com Flag (DEVICE_BOUND_TO_OTHER)
+                                  └── NÃO ➔ Presença 100% Válida e Limpa (OK)
+</pre>
+</div>
+</div>
+<div id="outline-container-org03e252c" class="outline-2">
+<h2 id="org03e252c"><span class="section-number-2">6.</span> 6. Conclusão da Aula</h2>
+<div class="outline-text-2" id="text-6">
+<ol class="org-ol">
+<li><b>OAuth2 + PKCE</b> resolve de forma elegante e segura a autenticação em aplicações estáticas (GitHub Pages), delegando a gestão de senhas e papéis ao <b>Keycloak</b>.</li>
+<li>A segurança da presença não depende apenas de login e senha, mas sim da <b>convergência de múltiplos fatores</b>:
+<ul class="org-ul">
+<li><b>O que o aluno sabe</b>: Login e senha do Keycloak.</li>
+<li><b>O que o aluno vê</b>: O código rotativo de 45s no telão da sala.</li>
+<li><b>Onde o aluno está</b>: Coordenadas GPS validadas contra o polígono do terreno da escola.</li>
+<li><b>O que o aluno possui</b>: O smartphone físico registrado e verificado pessoalmente na secretaria.</li>
+</ul></li>
+</ol>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Wagner Marques / Equipe Chamada Online</p>
+<p class="date">Created: 2026-09-11 sex 16:17</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

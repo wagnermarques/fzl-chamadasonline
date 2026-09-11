@@ -1,0 +1,196 @@
+#+TITLE: Plano de Aula: Autenticação OAuth2/Keycloak e Segurança Antifraude em Chamadas Digitais
+#+AUTHOR: Wagner Marques / Equipe Chamada Online
+#+LANGUAGE: pt-BR
+#+OPTIONS: toc:2 num:t
+
+* 1. Objetivos da Aula
+
+Ao final desta aula, os alunos/desenvolvedores serão capazes de:
+1. Compreender o fluxo de autenticação moderno *OAuth 2.0 / OpenID Connect (OIDC)* usando *Authorization Code Flow com PKCE (Proof Key for Code Exchange)* em aplicações web estáticas (Single Page Applications / GitHub Pages).
+2. Entender o papel do *Keycloak* como Provedor de Identidade (IdP) centralizado e emissor de tokens criptográficos *JWT (JSON Web Tokens)*.
+3. Analisar e projetar *mecanismos de defesa em camadas* contra fraudes em sistemas de presença por geolocalização.
+4. Responder com precisão ao principal vetor de ataque: *"O que impede um aluno presente de pegar o login e a senha do colega ausente e marcar presença para ele usando o próprio celular dentro da sala?"*
+
+* 2. Parte 1: Como Funciona o OAuth 2.0 / OIDC com Keycloak (Passo a Passo)
+
+Em aplicações hospedadas em ambientes estáticos como o *GitHub Pages*, o código JavaScript roda 100% no navegador do usuário (cliente público). Não é seguro guardar segredos de cliente (Client Secrets) no frontend, pois qualquer usuário pode abrir o código-fonte no DevTools.
+
+Por isso, o padrão internacional de segurança exige o fluxo *OAuth 2.0 Authorization Code com PKCE (RFC 7636)*.
+
+#+begin_example
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                    FLUXO OAUTH 2.0 / OIDC COM PKCE (GITHUB PAGES ➔ KEYCLOAK)             │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+ [ Navegador / PWA ]               [ Keycloak (Auth Server) ]        [ API Backend (Render) ]
+  (GitHub Pages)                     (auth.fzlsoft.com)               (chamadas-api)
+        │                                    │                              │
+ 1. Gera code_verifier                       │                              │
+    e code_challenge (S256)                  │                              │
+        │                                    │                              │
+ 2. Redireciona para login ─────────────────▶│                              │
+    (/auth?client_id=...&code_challenge=...) │                              │
+        │                                    │                              │
+        │                             3. Aluno digita                       │
+        │                                login + senha                      │
+        │                                    │                              │
+ 4. Redireciona de volta ◀───────────────────┤                              │
+    com Authorization Code                   │                              │
+    (?code=XYZ...)                           │                              │
+        │                                    │                              │
+ 5. POST /token ────────────────────────────▶│                              │
+    (code=XYZ + code_verifier)               │                              │
+        │                             6. Confere hash                       │
+        │                                SHA256 do verifier                 │
+        │                                    │                              │
+ 7. Retorna JWT (Access Token) ◀─────────────┤                              │
+    (roles: chamadas-user, etc.)             │                              │
+        │                                    │                              │
+ 8. POST /auth/keycloak (JWT + clientToken) ───────────────────────────────▶│
+        │                                                                   │ 9. Valida JWT,
+        │                                                                   │    confere roles,
+        │                                                                   │    auto-provisiona
+        │                                                                   │    aluno no banco e
+        │                                                                   │    associa o celular
+        │◀────────────────── 10. Sessão Ativa (Token API) ──────────────────│
+#+end_example
+
+** 2.1. O que é o PKCE e por que ele é obrigatório?
+1. *Code Verifier*: O navegador gera uma string secreta aleatória de alta entropia.
+2. *Code Challenge*: O navegador calcula o hash SHA-256 do ~code_verifier~ e envia ao Keycloak na requisição inicial de login.
+3. *Troca Segura*: Ao receber o código de autorização (~code=XYZ~), o frontend envia o ~code_verifier~ original. O Keycloak calcula o SHA-256 dele e compara com o ~code_challenge~ recebido no passo anterior.
+4. *Proteção*: Mesmo que um software malicioso intercepte a URL com o código ~code=XYZ~, ele não conseguirá obter o token porque não possui o ~code_verifier~ que ficou na memória do navegador legítimo.
+
+** 2.2. A anatomia do Token JWT emitido pelo Keycloak
+Após o login, o Keycloak emite um token assinado digitalmente contendo os dados e os papéis do aluno:
+
+#+begin_src json
+{
+  "iss": "https://auth.fzlsoft.com/realms/fzlbpms",
+  "sub": "4a71d87e-9189-4d6b-8012-e87a93cb33a1",
+  "preferred_username": "20261001",
+  "name": "Maria Silva",
+  "email": "maria.silva@escola.edu.br",
+  "realm_access": {
+    "roles": [
+      "default-roles-fzlbpms",
+      "moodle-student",
+      "chamadas-user"
+    ]
+  }
+}
+#+end_src
+
+* 3. Parte 2: O Cenário Crítico de Fraude
+
+#+begin_quote
+*O Problema:* 
+"O Aluno João está em casa (ausente). Ele envia seu usuário e senha do Keycloak pelo WhatsApp para a aluna Maria (presente na sala).
+Maria está fisicamente dentro da escola (dentro do raio de geofence do evento e olhando para o telão). 
+Maria faz login com a conta de João no próprio smartphone dela e digita o código do telão para marcar presença para ele. 
+Como o sistema impede ou detecta essa fraude?"
+#+end_quote
+
+* 4. Parte 3: As Camadas de Proteção Antifraude do Projeto
+
+O sistema *Chamada Online* foi projetado exatamente para antecipar esse vetor de ataque através de *4 linhas de defesa progressivas*:
+
+#+CAPTION: Camadas de Defesa Antifraude
+| Camada | Mecanismo | Onde atua | Resultado contra o ataque |
+|--------+-----------+-----------+---------------------------|
+| 1 | *Código Rotativo (45s)* | Telão do Recinto | Impede que João marque sozinho de casa |
+| 2 | *Geofencing por Polígono* | GPS do Celular | Obriga a requisição a vir de dentro da escola |
+| 3 | *Vínculo de Dispositivo Automático + Fingerprint* | Browser Storage + Canvas | *Sinaliza (Flag)*: "Mesmo celular usado por 2 alunos" |
+| 4 | *Vínculo Verificado na Secretaria (Enrollment)* | Pareamento Físico de Aparelho | *Bloqueio Imediato (HTTP 403 Forbidden)* |
+
+** 4.1. Defesa 1: Vínculo de Dispositivo Automático (~clientToken~)
+- Quando Maria abre o PWA pela primeira vez no seu celular para marcar a própria presença, o app gera um UUID persistente (~clientToken~) gravado no armazenamento local do navegador (~localStorage~).
+- O banco de dados registra: ~Dispositivo [Token-ABC] pertence a Maria~.
+- Quando Maria faz logout e entra com a conta de João no *mesmo celular*, o PWA envia o mesmo ~Token-ABC~ com o ID de João.
+- A API detecta a colisão no backend (~apps/api/src/lib/device.ts~):
+  #+begin_src typescript
+  if (deviceStudentId && deviceStudentId !== requestingStudentId) {
+    reasons.push(FLAG_REASONS.DEVICE_BOUND_TO_OTHER_STUDENT);
+  }
+  #+end_src
+- *Ação*: O check-in é gravado como *FLAGGED* (suspeito) com o motivo ~device_bound_to_other_student~.
+
+** 4.2. Defesa 2: Impressão Digital do Dispositivo (~fingerprintHash~)
+- *"E se Maria abrir uma Aba Anônima para limpar o localStorage?"*
+- O PWA calcula o *Browser Fingerprint* (combinação de resolução de tela, GPU Canvas rendering, WebGL, sistema operacional e timezone).
+- Mesmo sem o ~clientToken~, a API compara os hashes de hardware e adiciona a flag:
+  ~SIMILAR_FINGERPRINT_MULTIPLE_STUDENTS~.
+
+** 4.3. Defesa 3: Vínculo Verificado pela Secretaria (Defesa Rígida / Anti-Empréstimo de Senha)
+Esta é a solução definitiva contra o compartilhamento de credenciais:
+
+1. *Cadastro Presencial do Smartphone*:
+   - No início do período letivo, cada aluno comparece pessoalmente à secretaria com seu smartphone.
+   - O funcionário da escola abre o painel (~/admin/enroll~), confirma o documento do aluno e gera um código de pareamento de uso único de 6 dígitos válido por 2 minutos.
+   - O aluno digita esse código no seu celular na tela (~/vincular~).
+   - O banco grava aquele aparelho específico como *Dispositivo Verificado* (~verified: true~) de João.
+
+2. *Execução no Momento da Chamada (~apps/api/src/routes/checkins.ts~)*:
+   - Quando Maria tenta usar a conta de João no celular dela:
+   #+begin_src typescript
+   // 1. Busca o dispositivo oficial verificado de João
+   const verifiedDevice = await getVerifiedDeviceForStudent(studentId);
+
+   // 2. Se João possui um aparelho verificado e a requisição NÃO veio dele:
+   if (verifiedDevice && verifiedDevice.clientToken !== clientToken) {
+     request.log.warn("Tentativa de check-in com celular não autorizado.");
+     return reply.code(403).send({ error: "device_not_enrolled" });
+   }
+   #+end_src
+
+3. *Resultado*:
+   - A API retorna imediatamente *HTTP 403 Forbidden (`device_not_enrolled`)*.
+   - Mesmo que Maria tenha a senha do Keycloak de João, esteja sentada na primeira fileira da sala e digite o código do telão perfeitamente, o sistema *recusa a presença* porque ela não está segurando o smartphone cadastrado de João.
+
+** 4.4. Defesa 4: Auditoria Silenciosa no Painel do Professor / Staff
+- Nos casos em que a escola opta por não fazer o cadastro prévio na secretaria, o sistema adota a *Auditoria Silenciosa*:
+  - O app não exibe mensagem de erro na tela de Maria (evita tumulto durante o evento).
+  - O painel do professor (~/admin/flagged~) exibe os registros em tempo real com marcadores vermelhos:
+    - 🔴 *João Silva*: Sinalizado por ~device_bound_to_other_student~ (Aparelho compartilhado com Maria Silva).
+  - A coordenação pedagógica pode aplicar advertência ou anular a presença diretamente no relatório exportado.
+
+* 5. Resumo Pedagógico para os Alunos
+
+#+begin_example
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 ÁRVORE DE DECISÃO DA API                               │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+
+              O aluno enviou a chamada com Token Keycloak válido
+                                      │
+                                      ▼
+                      O código do telão está no prazo de 45s?
+                                  ├── NÃO ➔ REJEITA (Código Expirado)
+                                  └── SIM
+                                      │
+                                      ▼
+                      O aluno tem Dispositivo Verificado na Secretaria?
+                                  ├── SIM ➔ O clientToken bate com o aparelho cadastrado?
+                                  │           ├── NÃO ➔ BLOQUEIA (HTTP 403 device_not_enrolled)
+                                  │           └── SIM ➔ Continua
+                                  └── NÃO (Dispositivo ainda não verificado)
+                                      │
+                                      ▼
+                      O GPS está dentro do Polígono da Escola?
+                                  ├── NÃO ➔ Marca Presença com Flag (OUTSIDE_GEOFENCE)
+                                  └── SIM ➔ Continua
+                                      │
+                                      ▼
+                      O aparelho ou fingerprint já pertence a outro aluno?
+                                  ├── SIM ➔ Marca Presença com Flag (DEVICE_BOUND_TO_OTHER)
+                                  └── NÃO ➔ Presença 100% Válida e Limpa (OK)
+#+end_example
+
+* 6. Conclusão da Aula
+
+1. *OAuth2 + PKCE* resolve de forma elegante e segura a autenticação em aplicações estáticas (GitHub Pages), delegando a gestão de senhas e papéis ao *Keycloak*.
+2. A segurança da presença não depende apenas de login e senha, mas sim da *convergência de múltiplos fatores*:
+   - *O que o aluno sabe*: Login e senha do Keycloak.
+   - *O que o aluno vê*: O código rotativo de 45s no telão da sala.
+   - *Onde o aluno está*: Coordenadas GPS validadas contra o polígono do terreno da escola.
+   - *O que o aluno possui*: O smartphone físico registrado e verificado pessoalmente na secretaria.

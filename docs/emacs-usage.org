@@ -1,0 +1,120 @@
+#+TITLE: Guia de Uso do Emacs - Configuração do Projeto Chamada Online
+#+AUTHOR: Equipe Chamada Online
+#+LANGUAGE: pt-BR
+#+OPTIONS: toc:2 num:t
+
+* 1. Visão Geral e Instalação
+
+Este documento serve como referência rápida para o ambiente Emacs configurado através do arquivo ~init.el~ deste projeto.
+
+A configuração inclui:
+- *Treemacs*: Árvore de arquivos lateral com abertura automática na inicialização.
+- *Magit*: Interface Git completa e intuitiva.
+- *Dired Avançado*: Navegação em buffer único, cópia inteligente (DWIM) e edição de nomes em lote (WDired).
+- *Vertico + Consult + Marginalia*: Autocompletar moderno e busca rápida no projeto.
+- *YASnippet & Snippets*: Templates prontos para inserção de imagens com legendas e controle de largura (HTML e LaTeX/PDF), além de equações.
+
+** Como aplicar a configuração no seu sistema:
+
+#+begin_src bash
+# Copiar para o diretório padrão do Emacs
+cp init.el ~/.emacs.d/init.el
+# ou (se usar XDG config)
+cp init.el ~/.config/emacs/init.el
+
+# Copiar a pasta de snippets (opcional, para uso global)
+cp -r snippets ~/.emacs.d/
+#+end_src
+
+* 2. Treemacs (Árvore Lateral de Arquivos)
+
+O Treemacs foi configurado para iniciar automaticamente na lateral esquerda ao abrir o Emacs.
+
+#+CAPTION: Principais Atalhos do Treemacs
+| Atalho | Ação |
+|--------+------|
+| ~<f8>~ ou ~C-x t t~ | Abre / fecha a barra lateral do Treemacs |
+| ~M-0~ | Move o foco do cursor diretamente para a janela do Treemacs |
+| ~C-x t C-t~ | Localiza o arquivo do buffer atual na árvore |
+| ~RET~ / ~TAB~ | Expande / recolhe pastas ou abre arquivos |
+
+* 3. Magit (Controle de Versão Git)
+
+O Magit transforma a experiência com Git no Emacs.
+
+#+CAPTION: Principais Atalhos do Magit
+| Atalho | Ação |
+|--------+------|
+| ~C-x g~ | Abre o *Magit Status* (visão geral de commits, branches e arquivos modificados) |
+| ~C-c g b~ | Ativa o *Magit Blame* no arquivo atual (mostra autor e commit linha por linha) |
+| ~s~ (no status) | Adiciona o arquivo ao stage (~git add~) |
+| ~u~ (no status) | Remove o arquivo do stage (~git reset~) |
+| ~c c~ (no status) | Abre o buffer para escrever a mensagem de commit |
+| ~P u~ (no status) | Faz push para a branch remota (~git push~) |
+| ~F u~ (no status) | Faz pull da branch remota (~git pull~) |
+| ~q~ | Fecha a janela do Magit e volta ao buffer anterior |
+
+* 4. Dired Melhorado (Gerenciador de Arquivos)
+
+O Dired foi customizado para máxima produtividade:
+
+- *Buffer Único*: Navegar entre pastas não cria dezenas de buffers temporários.
+- *Dired DWIM (~dired-dwim-target t~)*: Ao abrir duas janelas Dired lado a lado (~C-x 2~ ou ~C-x 3~), pressionar ~C~ (copiar) ou ~R~ (mover) sugere automaticamente a outra pasta como destino.
+- *WDired (Writable Dired)*: Permite editar os nomes dos arquivos diretamente como texto.
+
+#+CAPTION: Principais Atalhos do Dired
+| Atalho | Ação |
+|--------+------|
+| ~RET~ | Entra no diretório selecionado no mesmo buffer |
+| ~^~ | Volta para o diretório pai no mesmo buffer |
+| ~e~ | Ativa o modo *WDired* (edite nomes, adicione prefixos, use replace; confirme com ~C-c C-c~ ou cancele com ~C-c C-k~) |
+| ~h~ | Oculta / exibe detalhes de permissão, tamanho e datas |
+| ~C-x M-o~ | Alterna a ocultação de arquivos ignorados (.git, temporários) |
+| ~+~ | Cria um novo diretório |
+| ~d~ seguido de ~x~ | Marca arquivo para deleção e executa a exclusão |
+| ~C~ | Copia arquivo / pasta selecionada |
+| ~R~ | Renomeia / move arquivo selecionado |
+
+* 5. YASnippet, Org-Mode e Inserção de Imagens
+
+** 5.1. Snippet de Imagem para Org-mode (~img~ + ~TAB~)
+
+Ao digitar ~img~ e pressionar ~TAB~ em qualquer arquivo ~.org~, o seguinte bloco é inserido com navegação interativa:
+
+#+begin_src org
+#+CAPTION: Descrição da imagem para legenda
+#+NAME: fig:meu_rotulo
+#+ATTR_HTML: :width 800px :align center
+#+ATTR_LATEX: :width 0.8\textwidth :placement [htbp]
+#+ATTR_ORG: :width 600
+[[./images/exemplo.png]]
+#+end_src
+
+*** Explicação dos parâmetros gerados:
+- *#+CAPTION*: Legenda descritiva exibida abaixo da imagem em exportações HTML e PDF/LaTeX.
+- *#+NAME*: Rótulo âncora para referências cruzadas no texto (ex: ~como visto na Figura [[fig:meu_rotulo]]~).
+- *#+ATTR_HTML*: Define a largura (~:width 800px~) e alinhamento (~:align center~) para exportação Web / HTML.
+- *#+ATTR_LATEX*: Define a escala relativa (~:width 0.8\textwidth~) e posição (~:placement [htbp]~) no documento PDF gerado via LaTeX.
+- *#+ATTR_ORG*: Controla a largura de exibição (~:width 600~) dentro do próprio editor Emacs.
+
+** 5.2. Template Rápido Org-Tempo (~<img~ + ~TAB~)
+Você também pode digitar ~<img~ e teclar ~TAB~ para gerar a estrutura padrão de imagem.
+
+** 5.3. Exibir Imagens Diretamente no Emacs
+- Use ~C-c C-x C-v~ para alternar a renderização visual das imagens embutidas no buffer do Org-mode.
+
+** 5.4. Snippets de Equação LaTeX e Figuras LaTeX
+- Em arquivos Org-mode: digite ~eq~ + ~TAB~ para inserir um bloco de equação numerada LaTeX.
+- Em arquivos ~.tex~ (LaTeX-mode): digite ~fig~ + ~TAB~ para inserir o ambiente completo ~\begin{figure}...\end{figure}~.
+
+* 6. Busca, Navegação e Produtividade
+
+#+CAPTION: Atalhos Gerais de Navegação
+| Atalho | Função |
+|--------+--------|
+| ~C-s~ | Busca interativa por linha no buffer atual (*consult-line*) |
+| ~C-x b~ | Selecionador de buffers e arquivos recentes com busca aproximada (*consult-buffer*) |
+| ~M-g g~ | Pular diretamente para o número da linha (*consult-goto-line*) |
+| ~C-c y i~ | Menu para buscar e inserir qualquer snippet disponível no modo atual |
+| ~C-c y n~ | Criar um novo snippet personalizado |
+| ~C-c y v~ | Abrir e editar o arquivo de um snippet existente |

@@ -7,6 +7,12 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const keycloakLoginSchema = z.object({
+  keycloakToken: z.string().min(1),
+  clientToken: z.string().uuid(),
+});
+export type KeycloakLoginInput = z.infer<typeof keycloakLoginSchema>;
+
 export const checkinSchema = z.object({
   eventPeriodId: z.string().uuid(),
   code: z.string().min(4).max(12),

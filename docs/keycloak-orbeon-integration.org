@@ -1,0 +1,145 @@
+#+TITLE: Integração Keycloak, Orbeon Forms e fzl-chamadasonline (SSO Unificado)
+#+AUTHOR: Equipe Chamada Online
+#+LANGUAGE: pt-BR
+#+OPTIONS: toc:2 num:t
+
+* 1. Visão Geral da Arquitetura
+
+O objetivo desta integração é unificar a base de usuários de todo o ecossistema (Moodle, Chamada Online e sistemas futuros) sob uma única autoridade de identidade (*Keycloak*), permitindo que:
+
+1. O cadastro e atribuição de permissões sejam feitos centralizadamente via *Orbeon Forms*.
+2. O aluno utilize *exatamente o mesmo login e senha* tanto no Moodle quanto no PWA do Chamada Online.
+3. O acesso ao Chamada Online seja controlado por uma role específica do Keycloak (~chamadas-user~ ou ~chamadas-student~).
+
+#+begin_example
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           FLUXO DE AUTENTICAÇÃO SSO                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ [ Administrador ]
+        │ Preenche cadastro e seleciona sistemas
+        ▼
+ ┌───────────────┐        HTTP / JSON         ┌─────────────────────────────────┐
+ │ Orbeon Form   │ ─────────────────────────▶ │ Apache Camel / Orchestrator API │
+ └───────────────┘                            └────────────────┬────────────────┘
+                                                               │ Keycloak Admin REST
+                                                               ▼
+                                              ┌─────────────────────────────────┐
+                                              │    Keycloak (IAM Central)       │
+                                              │  Cria Usuário + Atribui Roles   │
+                                              └──────┬────────────────────┬─────┘
+                                                     │                    │
+                        OIDC / SSO                   │                    │ OIDC / PKCE (SPA)
+                        Token de Sessão              │                    │ Token JWT
+                                                     ▼                    ▼
+                                            ┌────────────────┐   ┌──────────────────────┐
+                                            │ Moodle LMS     │   │ fzl-chamadasonline   │
+                                            │ (auth_keycloak)│   │ (GitHub Pages PWA)   │
+                                            └────────────────┘   └──────────┬───────────┘
+                                                                            │ POST /auth/keycloak
+                                                                            ▼
+                                                                 ┌──────────────────────┐
+                                                                 │ API Chamada (Render) │
+                                                                 │ Valida role & Device │
+                                                                 └──────────────────────┘
+#+end_example
+
+* 2. Configuração do Cliente no Keycloak
+
+No painel de administração do Keycloak (Realm ~fzlbpms~):
+
+** 2.1. Realm Roles
+Criar as seguintes roles no Realm:
+- ~chamadas-user~: Permite ao aluno acessar o PWA Chamada Online.
+- ~chamadas-staff~: Concede permissão de equipe/administrador no Chamada Online.
+- ~moodle-student~: Permite acesso ao Moodle.
+
+** 2.2. Cliente Público para o PWA (GitHub Pages)
+- *Client ID*: ~fzl-chamadasonline~
+- *Client Authentication*: ~OFF~ (Public Client para SPAs)
+- *Standard Flow*: ~ON~ (Authorization Code Flow com PKCE)
+- *Direct Access Grants*: ~OFF~ (ou ~ON~ para testes)
+- *Valid Redirect URIs*:
+  - ~https://wagnermarques.github.io/fzl-chamadasonline/*~
+  - ~http://localhost:*~ (para desenvolvimento local)
+- *Valid Post Logout Redirect URIs*:
+  - ~https://wagnermarques.github.io/fzl-chamadasonline/*~
+- *Web Origins (CORS)*:
+  - ~https://wagnermarques.github.io~
+  - ~http://localhost:5173~
+  - ou ~+~ (herda dos redirect URIs)
+- *Advanced Settings -> Proof Key for Code Exchange (PKCE)*:
+  - *Code Challenge Method*: ~S256~
+
+* 3. Como a Aplicação (~fzl-chamadasonline~) Opera
+
+** 3.1. No Frontend (~apps/web~)
+1. A biblioteca ~keycloak-js~ foi integrada via ~apps/web/src/lib/keycloak.ts~.
+2. Na tela de login (~apps/web/src/pages/Login.tsx~), se o Keycloak estiver configurado, o botão *"Entrar com Keycloak / Moodle"* é exibido.
+3. O aluno é redirecionado ao Keycloak em fluxo seguro PKCE.
+4. Após o login, o PWA recebe o token JWT e despacha para ~POST /auth/keycloak~ na API.
+
+** 3.2. No Backend (~apps/api~)
+1. A rota ~POST /auth/keycloak~ (~apps/api/src/routes/auth.ts~) recebe o token do Keycloak e o ~clientToken~ do dispositivo.
+2. A API decodifica o token e verifica se o usuário possui a role de acesso (~chamadas-user~ / ~chamadas-student~ / ~chamadas-staff~).
+3. *Auto-provisionamento*: Se o usuário ainda não existir no banco local do Chamada Online, a API cria o registro automaticamente com matrícula, nome e e-mail.
+4. Vincula o dispositivo ao aluno para as regras antifraude e emite a sessão JWT da API.
+
+* 4. Variáveis de Ambiente do Frontend
+
+Para ativar o Keycloak no frontend, configure as seguintes variáveis no arquivo ~.env~ (ou no GitHub Actions / Render):
+
+| Variável | Descrição | Exemplo |
+|----------+-----------+---------|
+| ~VITE_KEYCLOAK_URL~ | URL pública do servidor Keycloak | ~https://auth.seu-dominio.com~ |
+| ~VITE_KEYCLOAK_REALM~ | Nome do Realm configurado | ~fzlbpms~ |
+| ~VITE_KEYCLOAK_CLIENT_ID~ | ID do cliente SPA | ~fzl-chamadasonline~ |
+
+* 5. Fluxo de Provisionamento com Orbeon Forms
+
+Quando o administrador cadastra um aluno no formulário Orbeon:
+
+** 5.1. Campos do Formulário:
+- ~username~ / Matrícula (ex: ~20261001~)
+- ~firstName~ / Nome
+- ~lastName~ / Sobrenome
+- ~email~ / E-mail institucional
+- ~password~ / Senha temporária
+- ~systems~ (Seleção de Múltipla Escolha):
+  - [X] ~chamadas-user~ (Acesso ao Chamada Online)
+  - [X] ~moodle-student~ (Acesso ao Moodle)
+
+** 5.2. Chamada ao Keycloak Admin REST API (Orquestrada por Camel):
+#+begin_src http
+POST /admin/realms/fzlbpms/users
+Authorization: Bearer <ADMIN_TOKEN>
+Content-Type: application/json
+
+{
+  "username": "20261001",
+  "firstName": "Wagner",
+  "lastName": "Marques",
+  "email": "wagner@exemplo.com",
+  "enabled": true,
+  "emailVerified": true,
+  "credentials": [
+    {
+      "type": "password",
+      "value": "SenhaTemporaria123!",
+      "temporary": true
+    }
+  ]
+}
+#+end_src
+
+Em seguida, atribui as roles selecionadas:
+#+begin_src http
+POST /admin/realms/fzlbpms/users/{userId}/role-mappings/realm
+Authorization: Bearer <ADMIN_TOKEN>
+Content-Type: application/json
+
+[
+  { "id": "<ROLE_ID_CHAMADAS>", "name": "chamadas-user" },
+  { "id": "<ROLE_ID_MOODLE>", "name": "moodle-student" }
+]
+#+end_src

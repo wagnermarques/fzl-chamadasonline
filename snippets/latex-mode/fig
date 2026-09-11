@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: LaTeX Figure Environment
+# key: fig
+# --
+\begin{figure}[${1:htbp}]
+  \centering
+  \includegraphics[width=${2:0.8}\textwidth]{${3:imagem.png}}
+  \caption{${4:Legenda da figura}}
+  \label{fig:${5:rotulo}}
+\end{figure}
+$0

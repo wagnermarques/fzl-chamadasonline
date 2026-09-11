@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: Org LaTeX Equation Block
+# key: eq
+# --
+\begin{equation}
+\label{eq:${1:rotulo}}
+  $0
+\end{equation}
