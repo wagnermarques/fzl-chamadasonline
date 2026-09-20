@@ -40,6 +40,9 @@ jobs:
         run: npm run build --workspace apps/web
         env:
           VITE_API_URL: ${{ vars.API_URL }}
+          VITE_KEYCLOAK_URL: ${{ vars.KEYCLOAK_URL }}
+          VITE_KEYCLOAK_REALM: ${{ vars.KEYCLOAK_REALM }}
+          VITE_KEYCLOAK_CLIENT_ID: ${{ vars.KEYCLOAK_CLIENT_ID }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
