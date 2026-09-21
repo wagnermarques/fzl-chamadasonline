@@ -11,5 +11,22 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    ports:
+      - "3333:3333"
+    environment:
+      - DATABASE_URL=postgresql://chamadas:chamadas@db:5432/chamadasonline
+      - JWT_SECRET=change-me-to-a-secure-random-string-in-production
+      - ALLOWED_ORIGINS=https://wagnermarques.github.io
+      # Adicione as variáveis do Keycloak aqui se a API precisar:
+      - KEYCLOAK_CLIENT_ID=fzl-chamadasonline
+    depends_on:
+      - db
+
 volumes:
   db-data:
+

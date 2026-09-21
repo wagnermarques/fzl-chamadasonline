@@ -35,8 +35,8 @@ jobs:
 
       - name: Build web app
         # VITE_API_URL: set this repo variable (Settings -> Secrets and
-        # variables -> Actions -> Variables) to the deployed API's URL, e.g.
-        # https://chamadasonline-api.onrender.com, once it exists on Render.
+        # variables -> Actions -> Variables) to your Nginx proxy URL, e.g.
+        # https://your-domain.com/chamadasonline
         run: npm run build --workspace apps/web
         env:
           VITE_API_URL: ${{ vars.API_URL }}

@@ -63,7 +63,8 @@ export default async function authRoutes(app: FastifyInstance) {
       const name: string = payload.name || payload.preferred_username || "Aluno";
       const email: string | undefined = payload.email || undefined;
       const realmRoles: string[] = payload.realm_access?.roles || [];
-      const clientRoles: string[] = payload.resource_access?.["fzl-chamadasonline"]?.roles || [];
+      const clientId = process.env.KEYCLOAK_CLIENT_ID || "fzl-chamadasonline";
+      const clientRoles: string[] = payload.resource_access?.[clientId]?.roles || [];
       const allRoles = [...realmRoles, ...clientRoles];
 
       // Verifica permissões necessárias
