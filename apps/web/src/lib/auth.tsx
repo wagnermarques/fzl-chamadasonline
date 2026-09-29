@@ -25,6 +25,27 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// StrictMode runs the bootstrap effect twice in dev; share one Keycloak →
+// API token exchange so the backend sees a single POST /auth/keycloak.
+let keycloakExchange: Promise<{ accessToken: string; user: AuthUser } | null> | null = null;
+
+function exchangeKeycloakToken() {
+  if (!keycloakExchange) {
+    keycloakExchange = initKeycloak().then((kcResult) =>
+      kcResult
+        ? api<{ accessToken: string; user: AuthUser }>("/auth/keycloak", {
+            method: "POST",
+            body: JSON.stringify({
+              keycloakToken: kcResult.token,
+              clientToken: getOrCreateClientToken(),
+            }),
+          })
+        : null,
+    );
+  }
+  return keycloakExchange;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,13 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 1. Tenta inicializar SSO do Keycloak se configurado
       if (isKeycloakConfigured) {
         try {
-          const kcResult = await initKeycloak();
-          if (kcResult) {
-            const clientToken = getOrCreateClientToken();
-            const res = await api<{ accessToken: string; user: AuthUser }>("/auth/keycloak", {
-              method: "POST",
-              body: JSON.stringify({ keycloakToken: kcResult.token, clientToken }),
-            });
+          const res = await exchangeKeycloakToken();
+          if (res) {
             persistToken(res.accessToken);
             setUser(res.user);
             setLoading(false);

@@ -6,11 +6,21 @@ import { prisma } from "./prisma.js";
  * The first student to check in from a device "owns" it going forward.
  */
 export async function upsertDevice(clientToken: string, fingerprintHash?: string) {
-  return prisma.device.upsert({
-    where: { clientToken },
-    update: fingerprintHash ? { fingerprintHash } : {},
-    create: { clientToken, fingerprintHash },
-  });
+  const upsert = () =>
+    prisma.device.upsert({
+      where: { clientToken },
+      update: fingerprintHash ? { fingerprintHash } : {},
+      create: { clientToken, fingerprintHash },
+    });
+  try {
+    return await upsert();
+  } catch (err) {
+    // Prisma's upsert is find-then-create, so two concurrent requests from the
+    // same browser (e.g. two tabs) can both try to create. Retry once: the
+    // row now exists and the upsert takes the update path.
+    if ((err as { code?: string }).code !== "P2002") throw err;
+    return upsert();
+  }
 }
 
 interface DeviceFlagInput {
