@@ -28,7 +28,16 @@ export interface KeycloakAuthResult {
   roles: string[];
 }
 
-export async function initKeycloak(): Promise<KeycloakAuthResult | null> {
+// keycloak-js throws if init() runs twice on the same instance, which happens
+// when React StrictMode double-invokes effects in dev. Share one init promise.
+let initPromise: Promise<KeycloakAuthResult | null> | null = null;
+
+export function initKeycloak(): Promise<KeycloakAuthResult | null> {
+  if (!initPromise) initPromise = doInitKeycloak();
+  return initPromise;
+}
+
+async function doInitKeycloak(): Promise<KeycloakAuthResult | null> {
   const kc = getKeycloakInstance();
   if (!kc) return null;
 

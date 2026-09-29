@@ -86,20 +86,30 @@ export default async function authRoutes(app: FastifyInstance) {
       );
 
       // Localiza ou auto-provisiona o usuário no banco
-      let user = await prisma.user.findFirst({
-        where: { OR: [{ registrationNumber: username }, ...(email ? [{ email }] : [])] },
-      });
+      const findUser = () =>
+        prisma.user.findFirst({
+          where: { OR: [{ registrationNumber: username }, ...(email ? [{ email }] : [])] },
+        });
+      let user = await findUser();
 
       if (!user) {
-        user = await prisma.user.create({
-          data: {
-            registrationNumber: username,
-            name,
-            email,
-            role: isStaff ? "STAFF" : "STUDENT",
-            pinHash: "", // Autenticação delegada ao Keycloak
-          },
-        });
+        try {
+          user = await prisma.user.create({
+            data: {
+              registrationNumber: username,
+              name,
+              email,
+              role: isStaff ? "STAFF" : "STUDENT",
+              pinHash: "", // Autenticação delegada ao Keycloak
+            },
+          });
+        } catch (err) {
+          // Duas requisições simultâneas no primeiro login (ex.: StrictMode,
+          // duas abas): a outra já criou o usuário — reusa o registro dela.
+          if ((err as { code?: string }).code !== "P2002") throw err;
+          user = await findUser();
+          if (!user) throw err;
+        }
       } else {
         user = await prisma.user.update({
           where: { id: user.id },
