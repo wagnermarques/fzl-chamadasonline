@@ -22,7 +22,9 @@ services:
       - DATABASE_URL=postgresql://chamadas:chamadas@db:5432/chamadasonline
       - JWT_SECRET=change-me-to-a-secure-random-string-in-production
       - ALLOWED_ORIGINS=https://wagnermarques.github.io
-      # Adicione as variáveis do Keycloak aqui se a API precisar:
+      # Keycloak SSO: sem KEYCLOAK_ISSUER o endpoint /auth/keycloak fica desativado
+      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER:-}
+      - KEYCLOAK_JWKS_URL=${KEYCLOAK_JWKS_URL:-}
       - KEYCLOAK_CLIENT_ID=fzl-chamadasonline
     depends_on:
       - db

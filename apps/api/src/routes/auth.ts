@@ -3,6 +3,8 @@ import type { FastifyInstance } from "fastify";
 import { loginSchema, keycloakLoginSchema } from "@chamadas/shared";
 import { prisma } from "../lib/prisma.js";
 import { upsertDevice, bindDeviceIfUnbound } from "../lib/device.js";
+import { env } from "../lib/env.js";
+import { keycloakEnabled, verifyKeycloakToken, type KeycloakClaims } from "../lib/keycloak.js";
 
 export default async function authRoutes(app: FastifyInstance) {
   app.post(
@@ -49,22 +51,26 @@ export default async function authRoutes(app: FastifyInstance) {
       }
       const { keycloakToken, clientToken } = parsed.data;
 
-      let payload: any;
+      if (!keycloakEnabled) {
+        return reply.code(503).send({ error: "keycloak_not_configured" });
+      }
+
+      let payload: KeycloakClaims;
       try {
-        const base64Url = keycloakToken.split(".")[1];
-        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-        const jsonPayload = Buffer.from(base64, "base64").toString("utf-8");
-        payload = JSON.parse(jsonPayload);
-      } catch {
+        payload = await verifyKeycloakToken(keycloakToken);
+      } catch (err) {
+        request.log.warn({ err }, "keycloak token rejected");
         return reply.code(401).send({ error: "invalid_keycloak_token" });
       }
 
-      const username: string = payload.preferred_username || payload.sub;
+      const username = payload.preferred_username || payload.sub;
+      if (!username) {
+        return reply.code(401).send({ error: "invalid_keycloak_token" });
+      }
       const name: string = payload.name || payload.preferred_username || "Aluno";
       const email: string | undefined = payload.email || undefined;
       const realmRoles: string[] = payload.realm_access?.roles || [];
-      const clientId = process.env.KEYCLOAK_CLIENT_ID || "fzl-chamadasonline";
-      const clientRoles: string[] = payload.resource_access?.[clientId]?.roles || [];
+      const clientRoles: string[] = payload.resource_access?.[env.keycloak.clientId]?.roles || [];
       const allRoles = [...realmRoles, ...clientRoles];
 
       // Verifica permissões necessárias
