@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
+import { UserBadge } from "../../components/UserBadge";
 
 interface FlaggedItem {
   id: string;
@@ -34,7 +35,10 @@ export function AdminFlagged() {
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-4">
-      <h1 className="text-xl font-semibold">Presenças sinalizadas para revisão</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Presenças sinalizadas para revisão</h1>
+        <UserBadge />
+      </div>
       {flaggedQuery.data?.flagged.length === 0 && (
         <p className="text-slate-400 text-sm">Nenhuma pendência.</p>
       )}

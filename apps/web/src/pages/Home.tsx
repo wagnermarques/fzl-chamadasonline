@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { useAuth } from "../lib/auth";
 import { getCurrentPosition } from "../lib/geolocation";
 import { computeFingerprintHash, getOrCreateClientToken } from "../lib/device";
+import { UserBadge } from "../components/UserBadge";
 
 interface ActiveEventResponse {
   active: boolean;
@@ -13,7 +13,6 @@ interface ActiveEventResponse {
 }
 
 export function Home() {
-  const { user, logout } = useAuth();
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -66,16 +65,13 @@ export function Home() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 gap-6">
-      <div className="w-full max-w-sm space-y-1 text-center">
-        <p className="text-sm text-slate-400">Olá, {user?.name}</p>
-        <div className="flex justify-center gap-4">
-          <Link to="/vincular" className="text-xs text-slate-500 underline">
-            Vincular este celular
-          </Link>
-          <button onClick={logout} className="text-xs text-slate-500 underline">
-            Sair
-          </button>
+      <div className="w-full max-w-sm space-y-2 text-center">
+        <div className="flex justify-center">
+          <UserBadge />
         </div>
+        <Link to="/vincular" className="text-xs text-slate-500 underline">
+          Vincular este celular
+        </Link>
       </div>
 
       {!activeQuery.data?.active && (

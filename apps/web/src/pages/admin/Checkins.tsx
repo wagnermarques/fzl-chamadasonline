@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
+import { UserBadge } from "../../components/UserBadge";
 
 interface CheckinItem {
   id: string;
@@ -23,7 +24,10 @@ export function AdminCheckins() {
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-4">
-      <h1 className="text-xl font-semibold">Check-ins ({checkinsQuery.data?.count ?? 0})</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Check-ins ({checkinsQuery.data?.count ?? 0})</h1>
+        <UserBadge />
+      </div>
       <ul className="divide-y divide-slate-800">
         {checkinsQuery.data?.checkins.map((c) => (
           <li key={c.id} className="py-2 flex justify-between text-sm">

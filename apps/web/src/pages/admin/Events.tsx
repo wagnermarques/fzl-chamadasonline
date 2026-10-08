@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
+import { UserBadge } from "../../components/UserBadge";
 
 interface EventItem {
   id: string;
@@ -66,10 +67,11 @@ export function AdminEvents() {
     <div className="max-w-xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Eventos</h1>
-        <Link to="/admin/enroll" className="text-sm underline text-slate-400">
-          Vincular celular de aluno
-        </Link>
+        <UserBadge />
       </div>
+      <Link to="/admin/enroll" className="text-sm underline text-slate-400">
+        Vincular celular de aluno
+      </Link>
 
       <form
         onSubmit={(e) => {
