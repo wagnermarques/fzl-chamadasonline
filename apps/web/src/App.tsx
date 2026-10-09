@@ -18,7 +18,7 @@ export function App() {
         <Route
           path="/"
           element={
-            <RequireAuth role="STUDENT">
+            <RequireAuth role={["STUDENT", "STAFF"]}>
               <Home />
             </RequireAuth>
           }
@@ -26,7 +26,7 @@ export function App() {
         <Route
           path="/vincular"
           element={
-            <RequireAuth role="STUDENT">
+            <RequireAuth role={["STUDENT", "STAFF"]}>
               <EnrollDevice />
             </RequireAuth>
           }
