@@ -74,48 +74,50 @@ export function Home() {
         </Link>
       </div>
 
-      {!activeQuery.data?.active && (
-        <p className="text-slate-400 text-center max-w-sm">
-          Nenhum evento ativo no momento. Volte quando o evento começar.
+      <div className="w-full max-w-sm space-y-4">
+        <p className="text-center text-lg">
+          {period ? period.label : "Nenhum evento ativo no momento"}
         </p>
-      )}
 
-      {period && (
-        <div className="w-full max-w-sm space-y-4">
-          <p className="text-center text-lg">{period.label}</p>
-
-          <div>
-            <label className="block text-sm mb-1" htmlFor="code">
-              Código exibido no telão
-            </label>
-            <input
-              id="code"
-              className="w-full text-center tracking-[0.3em] uppercase rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xl"
-              value={code}
-              maxLength={5}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-            />
-          </div>
-
-          <button
-            onClick={() => {
-              setStatus("idle");
-              checkinMutation.mutate(period.id);
-            }}
-            disabled={checkinMutation.isPending || code.length < 5}
-            className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 py-6 text-2xl font-bold text-slate-900"
-          >
-            {checkinMutation.isPending ? "Registrando..." : "Marcar Presença"}
-          </button>
-
-          {status === "success" && (
-            <p className="text-emerald-400 text-center">Presença registrada!</p>
-          )}
-          {status === "error" && errorMessage && (
-            <p className="text-red-400 text-center">{errorMessage}</p>
-          )}
+        <div>
+          <label className="block text-sm mb-1" htmlFor="code">
+            Código exibido no telão
+          </label>
+          <input
+            id="code"
+            className="w-full text-center tracking-[0.3em] uppercase rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-xl disabled:opacity-50"
+            value={code}
+            maxLength={5}
+            disabled={!period}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+          />
         </div>
-      )}
+
+        <button
+          onClick={() => {
+            if (!period) return;
+            setStatus("idle");
+            checkinMutation.mutate(period.id);
+          }}
+          disabled={!period || checkinMutation.isPending || code.length < 5}
+          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 py-6 text-2xl font-bold text-slate-900"
+        >
+          {checkinMutation.isPending ? "Registrando..." : "Marcar Presença"}
+        </button>
+
+        {!period && (
+          <p className="text-slate-400 text-center text-sm">
+            Volte quando o evento começar para marcar presença.
+          </p>
+        )}
+
+        {status === "success" && (
+          <p className="text-emerald-400 text-center">Presença registrada!</p>
+        )}
+        {status === "error" && errorMessage && (
+          <p className="text-red-400 text-center">{errorMessage}</p>
+        )}
+      </div>
     </div>
   );
 }
