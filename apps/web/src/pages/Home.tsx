@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { getCurrentPosition } from "../lib/geolocation";
 import { computeFingerprintHash, getOrCreateClientToken } from "../lib/device";
 import { UserBadge } from "../components/UserBadge";
+import { ShareApp } from "../components/ShareApp";
 
 interface ActiveEventResponse {
   active: boolean;
@@ -118,6 +119,8 @@ export function Home() {
           <p className="text-red-400 text-center">{errorMessage}</p>
         )}
       </div>
+
+      <ShareApp />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/api";
+import { ShareApp } from "../components/ShareApp";
 
 export function Login() {
   const { user, loading, logout, login, loginWithKeycloak, isKeycloakEnabled } = useAuth();
@@ -110,6 +111,8 @@ export function Login() {
               </button>
             </div>
           </div>
+
+          <ShareApp />
         </div>
       </div>
     );
@@ -178,6 +181,8 @@ export function Login() {
             {submitting ? "Entrando..." : "Entrar"}
           </button>
         </form>
+
+        <ShareApp />
       </div>
     </div>
   );

@@ -59,6 +59,16 @@
 - **Revisão de Suspeitos**: `/admin/events/:eventId/flagged` exibe presenças com bandeiras vermelhas e razões (`outside_geofence`, `device_bound_to_other_student`, etc.).
 - **Decisão**: Staff pode aprovar ou rejeitar (`PATCH /checkins/:id/review`).
 
+### 1.8. Compartilhamento do App entre Alunos (WhatsApp & Telegram)
+- **Status**: Concluído.
+- **Componente**: `apps/web/src/components/ShareApp.tsx`.
+- **Canais Integrados**:
+  - **WhatsApp**: Link direto `https://api.whatsapp.com/send?text=...` com mensagem pronta e URL do PWA.
+  - **Telegram**: Link direto `https://t.me/share/url?url=...&text=...`.
+  - **Copiar Link**: Cópia rápida via `navigator.clipboard` com indicador "Link Copiado!".
+  - **Web Share API**: Menu nativo de compartilhamento do smartphone quando suportado pelo navegador.
+- **Páginas Integradas**: Tela de presenças (`/` - `Home.tsx`) e tela de autenticação (`/login` - `Login.tsx`).
+
 ---
 
 ## 2. Dados de Teste e Credenciais Seed
