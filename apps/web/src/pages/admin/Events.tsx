@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { UserBadge } from "../../components/UserBadge";
+import { getCurrentPosition } from "../../lib/geolocation";
 
 interface EventItem {
   id: string;
@@ -38,6 +39,28 @@ export function AdminEvents() {
   const [lng, setLng] = useState("");
   const [radius, setRadius] = useState("150");
   const [polygonText, setPolygonText] = useState("");
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<string | null>(null);
+
+  async function fillCurrentLocation() {
+    setLoadingLocation(true);
+    setLocationStatus("Obtendo coordenadas via GPS...");
+    try {
+      const coords = await getCurrentPosition();
+      setLat(coords.lat.toFixed(6));
+      setLng(coords.lng.toFixed(6));
+      setLocationStatus("Coordenadas atuais obtidas com sucesso");
+    } catch (err) {
+      console.warn("Falha ao obter localização:", err);
+      setLocationStatus("Não foi possível obter a localização automaticamente.");
+    } finally {
+      setLoadingLocation(false);
+    }
+  }
+
+  useEffect(() => {
+    fillCurrentLocation();
+  }, []);
 
   const eventsQuery = useQuery({
     queryKey: ["admin-events"],
@@ -88,28 +111,83 @@ export function AdminEvents() {
           onChange={(e) => setName(e.target.value)}
           required
         />
-        <div className="grid grid-cols-3 gap-2">
-          <input
-            placeholder="Latitude"
-            className="rounded bg-slate-900 border border-slate-700 px-3 py-2"
-            value={lat}
-            onChange={(e) => setLat(e.target.value)}
-            required
-          />
-          <input
-            placeholder="Longitude"
-            className="rounded bg-slate-900 border border-slate-700 px-3 py-2"
-            value={lng}
-            onChange={(e) => setLng(e.target.value)}
-            required
-          />
-          <input
-            placeholder="Raio (m)"
-            className="rounded bg-slate-900 border border-slate-700 px-3 py-2"
-            value={radius}
-            onChange={(e) => setRadius(e.target.value)}
-            required
-          />
+        
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>Área da Geofence</span>
+            <button
+              type="button"
+              onClick={fillCurrentLocation}
+              disabled={loadingLocation}
+              className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 disabled:opacity-50 transition"
+              title="Obter coordenadas atuais do GPS"
+            >
+              <svg
+                className={`w-3.5 h-3.5 ${loadingLocation ? "animate-spin" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              {loadingLocation ? "Obtendo GPS..." : "Capturar GPS atual"}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Latitude</label>
+              <input
+                placeholder="Latitude"
+                className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm font-mono"
+                value={lat}
+                onChange={(e) => setLat(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Longitude</label>
+              <input
+                placeholder="Longitude"
+                className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm font-mono"
+                value={lng}
+                onChange={(e) => setLng(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Raio (m)</label>
+              <input
+                placeholder="Raio (m)"
+                className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm font-mono"
+                value={radius}
+                onChange={(e) => setRadius(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          {locationStatus && (
+            <p className="text-xs text-slate-400 flex items-center gap-1.5 pt-0.5">
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full ${
+                  lat && lng ? "bg-emerald-400" : "bg-amber-400"
+                }`}
+              />
+              {locationStatus}
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-sm text-slate-400 mb-1">
