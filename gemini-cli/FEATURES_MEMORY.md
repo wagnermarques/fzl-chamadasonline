@@ -35,6 +35,7 @@
 
 ### 1.4. Defesa Antifraude: Geofencing (Circular e Polígono)
 - **Status**: Concluído.
+- **Captura Automática (Staff)**: No painel `/admin/events`, a latitude e longitude do dispositivo do professor são detectadas e preenchidas automaticamente via GPS ao carregar a página, além de dispor de botão manual para nova captura imediata ("Capturar GPS atual").
 - **Modo Circular**: Centro em latitude/longitude e raio em metros (padrão 150m) via fórmula de Haversine.
 - **Modo Poligonal**: Lista ordenada de coordenadas `[{lat, lng}, ...]` delimitando o terreno da escola, validado com o algoritmo Ray-Casting.
 - **Comportamento Silencioso**: Check-ins fora da área retornam `status: ok` ao aluno para não alertar fraudadores, mas gravam a flag `outside_geofence`.
