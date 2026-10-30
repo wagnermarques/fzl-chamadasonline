@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "../../lib/api";
-import { UserBadge } from "../../components/UserBadge";
+import { AdminHeader } from "../../components/AdminHeader";
 
 interface LookupResponse {
   student: { id: string; name: string; registrationNumber: string | null };
@@ -91,10 +91,7 @@ export function AdminEnroll() {
 
   return (
     <div className="max-w-xl mx-auto p-6 space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-slate-100">Vincular celular do aluno</h1>
-        <UserBadge />
-      </div>
+      <AdminHeader title="Vincular Celular (Secretaria)" />
       <p className="text-sm text-slate-400">
         Com o aluno presente e com o celular dele em mãos: busque a matrícula, gere o código abaixo e
         peça para o aluno abrir "Vincular este celular" no app e digitar o código.

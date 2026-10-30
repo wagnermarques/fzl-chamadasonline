@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { computeFingerprintHash, getOrCreateClientToken } from "../lib/device";
 
 export function EnrollDevice() {
+  const { user } = useAuth();
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -62,9 +64,22 @@ export function EnrollDevice() {
         )}
         {status === "error" && errorMessage && <p className="text-red-400">{errorMessage}</p>}
 
-        <Link to="/" className="block text-sm text-slate-500 underline">
-          Voltar
-        </Link>
+        <div className="pt-2 space-y-3">
+          <Link to="/" className="block text-sm text-slate-500 underline">
+            Voltar para o início
+          </Link>
+
+          {user?.role === "STAFF" && (
+            <div className="border-t border-slate-700/60 pt-3">
+              <Link
+                to="/admin/enroll"
+                className="inline-block text-xs text-indigo-400 hover:text-indigo-300 underline"
+              >
+                Ir para Gestão de Celulares Vinculados (Secretaria)
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

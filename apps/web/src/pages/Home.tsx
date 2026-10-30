@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { getCurrentPosition } from "../lib/geolocation";
 import { computeFingerprintHash, getOrCreateClientToken } from "../lib/device";
 import { UserBadge } from "../components/UserBadge";
@@ -14,6 +15,7 @@ interface ActiveEventResponse {
 }
 
 export function Home() {
+  const { user } = useAuth();
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -70,9 +72,26 @@ export function Home() {
         <div className="flex justify-center">
           <UserBadge />
         </div>
-        <Link to="/vincular" className="text-xs text-slate-500 underline">
+        <Link to="/vincular" className="text-xs text-slate-500 underline block">
           Vincular este celular
         </Link>
+
+        {user?.role === "STAFF" && (
+          <div className="mt-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-3 text-center space-y-1.5 shadow">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
+              Painel Administrativo (Staff)
+            </span>
+            <div className="flex items-center justify-center gap-3 text-xs text-indigo-300 font-medium">
+              <Link to="/admin/events" className="hover:underline flex items-center gap-1">
+                <span>📅</span> Eventos & Telão
+              </Link>
+              <span className="text-slate-600">•</span>
+              <Link to="/admin/enroll" className="hover:underline flex items-center gap-1">
+                <span>📱</span> Celulares Vinculados
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="w-full max-w-sm space-y-4">
