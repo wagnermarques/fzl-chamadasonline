@@ -27,6 +27,38 @@ export default async function deviceRoutes(app: FastifyInstance) {
     });
   });
 
+  // Staff: list all students who have an enrolled / verified device
+  app.get("/devices/enrolled", { onRequest: [app.requireStaff] }, async (_request, reply) => {
+    const devices = await prisma.device.findMany({
+      where: { verified: true, studentId: { not: null } },
+      include: { student: true },
+      orderBy: { verifiedAt: "desc" },
+    });
+
+    const list = devices.map((d) => ({
+      deviceId: d.id,
+      clientToken: d.clientToken,
+      studentId: d.studentId,
+      studentName: d.student?.name ?? "",
+      registrationNumber: d.student?.registrationNumber ?? "",
+      email: d.student?.email ?? "",
+      verifiedAt: d.verifiedAt?.toISOString() ?? null,
+      lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
+    }));
+
+    return reply.send({ devices: list, total: list.length });
+  });
+
+  // Staff: unlink an enrolled device
+  app.post("/devices/:id/unlink", { onRequest: [app.requireStaff] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    await prisma.device.updateMany({
+      where: { OR: [{ id }, { studentId: id }] },
+      data: { verified: false, verifiedAt: null, verifiedByStaffId: null },
+    });
+    return reply.send({ status: "ok" });
+  });
+
   // Staff: generate a short-lived code for this student, shown on the staff
   // screen while the student is present at the secretaria with their phone.
   app.post(
