@@ -79,6 +79,6 @@ export function keycloakLogin() {
 export function keycloakLogout() {
   const kc = getKeycloakInstance();
   if (kc && kc.authenticated) {
-    return kc.logout({ redirectUri: window.location.origin });
+    return kc.logout({ redirectUri: window.location.origin + import.meta.env.BASE_URL });
   }
 }
